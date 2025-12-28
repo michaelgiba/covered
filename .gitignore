@@ -1,0 +1,33 @@
+# General
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+env/
+
+# Node / Frontend
+node_modules/
+.next/
+build/
+dist/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Project Data
+data/audio/
+data/segments/
+data/*.json
+# Keep the data directory itself if needed, but ignore contents

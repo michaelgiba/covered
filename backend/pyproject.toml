@@ -1,0 +1,29 @@
+[project]
+name = "covered-backend"
+version = "0.1.0"
+description = "Backend for Covered radio agent"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "imap-tools",
+    "openai",
+    "torch",
+    "torchaudio",
+    "numpy",
+    "scipy",
+    "pydantic",
+    "accelerate==1.6.0",
+    "transformers==4.51.3",
+    "diffusers",
+    "librosa",
+    "ml-collections",
+    "absl-py",
+    "soundfile"
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "ruff"
+]
