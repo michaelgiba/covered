@@ -1,22 +1,26 @@
 import argparse
 import os
 import json
-import uuid
+import time
+import subprocess
+import shutil
 from services.email import EmailService
 from services.script_writing import ScriptWritingService
 from services.tts import TTSService
-from models.data import Topic, TopicList
+from models.data import Topic
 
 # Determine absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 SEGMENTS_DIR = os.path.join(DATA_DIR, "segments")
+FEED_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/public/data/feed"))
 
 def ensure_directories():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)
     os.makedirs(SEGMENTS_DIR, exist_ok=True)
+    os.makedirs(FEED_DIR, exist_ok=True)
 
 def curate_command(args):
     ensure_directories()
@@ -38,13 +42,17 @@ def curate_command(args):
         ))
 
     # Save topics
+    # Note: This currently overwrites topics.json. 
+    # If the intention is to append, we should load existing first.
+    # But per current logic, it seems to be a fresh fetch.
     with open(os.path.join(DATA_DIR, "topics.json"), "w") as f:
         json.dump([t.model_dump() for t in topics], f, indent=2)
         
     print(f"Saved {len(topics)} topics to data/topics.json")
 
-def segment_command(args):
+def broadcast_command(args):
     ensure_directories()
+    
     # Load topics
     topics_path = os.path.join(DATA_DIR, "topics.json")
     if not os.path.exists(topics_path):
@@ -66,54 +74,180 @@ def segment_command(args):
         with open(processed_path, "r") as f:
             processed_ids = set(json.load(f))
 
-    # Select topic
-    if args.topic_id:
-        top_topic = next((t for t in topics if t.id == args.topic_id), None)
-        if not top_topic:
-            print(f"Topic with ID {args.topic_id} not found.")
-            return
-    else:
-        # Default to first unprocessed topic (FIFO)
-        top_topic = next((t for t in topics if t.id not in processed_ids), None)
-        if not top_topic:
-            print("No new topics to process.")
-            return
+    # Select next unprocessed topic (FIFO)
+    top_topic = next((t for t in topics if t.id not in processed_ids), None)
     
-    print(f"3. Processing Topic: {top_topic.title}")
+    if not top_topic:
+        print("No new topics to process.")
+        return
     
+    print(f"Processing Topic: {top_topic.title}")
+    
+    # Generate Script
     script_writing_service = ScriptWritingService()
     script_text = script_writing_service.generate_script(top_topic.title, top_topic.context)
 
     # Generate Audio
-    print("4. Generating Audio...")
+    print("Generating Audio...")
     tts_service = TTSService()
     audio_filename = f"{top_topic.id}.wav"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
     
+    # Check if audio already exists (optimization)
+    if os.path.exists(audio_path):
+        print(f"Audio already exists at {audio_path}")
+        # We assume we can get duration from the file or regeneration is fast enough.
+        # For robustness in this demo, let's just regenerate to get the exact duration return.
+    
     tts_result = tts_service.generate_audio(script_text, audio_path)
+    duration = tts_result["duration"]
     
-    # Create Segment JSON
-    segment_data = {
-        "id": top_topic.id,
-        "title": top_topic.title,
-        "audio_url": f"/data/audio/{audio_filename}", 
-        "transcript": tts_result["transcript"],
-        "duration": tts_result["duration"]
-    }
+    # Generate HLS Segments for this topic
+    print(f"Generating segments for {top_topic.id}...")
     
-    with open(os.path.join(SEGMENTS_DIR, f"{top_topic.id}.json"), "w") as f:
-        json.dump(segment_data, f, indent=2)
+    # We generate to a temporary playlist first
+    temp_playlist_path = os.path.join(FEED_DIR, f"temp_{top_topic.id}.m3u8")
+    segment_filename_pattern = os.path.join(FEED_DIR, f"segment_{top_topic.id}_%03d.ts")
+    
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", audio_path,
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-f", "hls",
+        "-hls_time", "4",
+        "-hls_list_size", "0", # Keep all segments in temp playlist
+        "-hls_segment_filename", segment_filename_pattern,
+        temp_playlist_path
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating HLS: {e}")
+        print(e.stderr.decode())
+        return
+
+    # Now we merge this into the master stream.m3u8
+    master_playlist_path = os.path.join(FEED_DIR, "stream.m3u8")
+    
+    # 1. Parse Temp Playlist to get new segments
+    new_segments = []
+    with open(temp_playlist_path, "r") as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines):
+            if line.startswith("#EXTINF:"):
+                # The next line is the filename
+                # We need to extract just the basename because the master playlist 
+                # should reference files relative to itself (in the same dir)
+                # We also inject the Topic ID into the title field of EXTINF
+                # Format: #EXTINF:duration,title
+                # We will make it: #EXTINF:duration,ID:{id}
+                
+                parts = line.strip().split(",")
+                duration_part = parts[0]
+                # We ignore any existing title and force our ID
+                inf_line = f"{duration_part},ID:{top_topic.id}"
+                
+                file_line = lines[i+1].strip()
+                filename = os.path.basename(file_line)
+                new_segments.append((inf_line, filename))
+
+    # 2. Read Master Playlist (if exists)
+    current_sequence = 0
+    existing_segments = []
+    
+    if os.path.exists(master_playlist_path):
+        with open(master_playlist_path, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                if line.startswith("#EXT-X-MEDIA-SEQUENCE:"):
+                    current_sequence = int(line.split(":")[1].strip())
+                elif line.startswith("#EXTINF:") or line.startswith("#EXT-X-DISCONTINUITY"):
+                    # We store the line as is. If it's EXTINF, we expect next line to be file.
+                    # But to simplify sliding window, let's store structured data.
+                    # Actually, we just need to preserve the lines.
+                    pass
+            
+            # Re-parsing for structured list to handle sliding window
+            # Structure: {'type': 'segment'|'discontinuity', 'lines': [...]}
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                if line.startswith("#EXTINF:"):
+                    existing_segments.append({
+                        'type': 'segment',
+                        'lines': [line, lines[i+1].strip()]
+                    })
+                    i += 2
+                elif line.startswith("#EXT-X-DISCONTINUITY"):
+                    existing_segments.append({
+                        'type': 'discontinuity',
+                        'lines': [line]
+                    })
+                    i += 1
+                else:
+                    i += 1
+
+    # 3. Append New Segments
+    # Add discontinuity before the new batch
+    if existing_segments:
+        existing_segments.append({'type': 'discontinuity', 'lines': ["#EXT-X-DISCONTINUITY"]})
+    
+    for inf, filename in new_segments:
+        existing_segments.append({
+            'type': 'segment',
+            'lines': [inf, filename]
+        })
+
+    # 4. Sliding Window (Keep last ~20 segments approx 80s)
+    MAX_SEGMENTS = 20
+    
+    # Count actual segments (excluding discontinuity tags)
+    total_segments = sum(1 for s in existing_segments if s['type'] == 'segment')
+    
+    segments_to_remove = 0
+    if total_segments > MAX_SEGMENTS:
+        segments_to_remove = total_segments - MAX_SEGMENTS
+    
+    # Remove from front
+    removed_count = 0
+    while removed_count < segments_to_remove and existing_segments:
+        item = existing_segments.pop(0)
+        if item['type'] == 'segment':
+            removed_count += 1
+            # Optionally delete the file from disk here if we want to clean up
+            # os.remove(os.path.join(FEED_DIR, item['lines'][1]))
+
+    # Update sequence number
+    current_sequence += removed_count
+
+    # 5. Write Master Playlist
+    with open(master_playlist_path, "w") as f:
+        f.write("#EXTM3U\n")
+        f.write("#EXT-X-VERSION:3\n")
+        f.write("#EXT-X-TARGETDURATION:5\n") # 4s segments, but maybe 5 to be safe
+        f.write(f"#EXT-X-MEDIA-SEQUENCE:{current_sequence}\n")
         
-    # Set Current Segment
-    with open(os.path.join(DATA_DIR, "current_segment.json"), "w") as f:
-        json.dump({"id": top_topic.id}, f, indent=2)
-        
-    # Update processed topics
+        for item in existing_segments:
+            for line in item['lines']:
+                f.write(f"{line}\n")
+                
+    print(f"Updated HLS feed. Sequence: {current_sequence}, Segments: {len(existing_segments)}")
+
+    # Cleanup temp playlist
+    os.remove(temp_playlist_path)
+
+    # Update processed topics immediately
     processed_ids.add(top_topic.id)
     with open(processed_path, "w") as f:
         json.dump(list(processed_ids), f, indent=2)
 
-    print(f"Generated segment for {top_topic.title}")
+    # Wait for duration
+    print(f"Broadcasting for {duration:.2f} seconds...")
+    time.sleep(duration)
+    print("Broadcast complete.")
 
 def main():
     parser = argparse.ArgumentParser(description="Covered Backend CLI")
@@ -123,10 +257,9 @@ def main():
     curate_parser = subparsers.add_parser("curate", help="Curate topics from emails")
     curate_parser.set_defaults(func=curate_command)
 
-    # Segment command
-    segment_parser = subparsers.add_parser("segment", help="Generate segment for a topic")
-    segment_parser.add_argument("--topic-id", help="ID of the topic to generate segment for")
-    segment_parser.set_defaults(func=segment_command)
+    # Broadcast command
+    broadcast_parser = subparsers.add_parser("broadcast", help="Process next topic and broadcast")
+    broadcast_parser.set_defaults(func=broadcast_command)
 
     args = parser.parse_args()
     args.func(args)

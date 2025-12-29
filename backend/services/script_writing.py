@@ -22,4 +22,4 @@ class ScriptWritingService:
             return script_obj.script
         except Exception as e:
             print(f"LLM Script Gen failed: {e}. Using fallback script.")
-            return f"Welcome to Covered. Today we are talking about {title}. {context} It's a fascinating development that everyone is talking about."
+            return f"Next - {title}. {context} So cool."
