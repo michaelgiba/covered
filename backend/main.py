@@ -92,13 +92,6 @@ def broadcast_command(args):
     tts_service = TTSService()
     audio_filename = f"{top_topic.id}.wav"
     audio_path = os.path.join(AUDIO_DIR, audio_filename)
-    
-    # Check if audio already exists (optimization)
-    if os.path.exists(audio_path):
-        print(f"Audio already exists at {audio_path}")
-        # We assume we can get duration from the file or regeneration is fast enough.
-        # For robustness in this demo, let's just regenerate to get the exact duration return.
-    
     tts_result = tts_service.generate_audio(script_text, audio_path)
     duration = tts_result["duration"]
     
@@ -106,8 +99,9 @@ def broadcast_command(args):
     print(f"Generating segments for {top_topic.id}...")
     
     # We generate to a temporary playlist first
+    timestamp = int(time.time())
     temp_playlist_path = os.path.join(FEED_DIR, f"temp_{top_topic.id}.m3u8")
-    segment_filename_pattern = os.path.join(FEED_DIR, f"segment_{top_topic.id}_%03d.ts")
+    segment_filename_pattern = os.path.join(FEED_DIR, f"{timestamp}_{top_topic.id}_%03d.m4a")
     
     cmd = [
         "ffmpeg",
@@ -115,11 +109,12 @@ def broadcast_command(args):
         "-i", audio_path,
         "-c:a", "aac",
         "-b:a", "128k",
-        "-f", "hls",
-        "-hls_time", "4",
-        "-hls_list_size", "0", # Keep all segments in temp playlist
-        "-hls_segment_filename", segment_filename_pattern,
-        temp_playlist_path
+        "-f", "segment",
+        "-segment_time", "10",
+        "-segment_list", temp_playlist_path,
+        "-segment_list_type", "m3u8",
+        "-segment_format", "mp4",
+        segment_filename_pattern
     ]
     
     try:
@@ -190,51 +185,9 @@ def broadcast_command(args):
                 else:
                     i += 1
 
-    # 3. Append New Segments
-    # Add discontinuity before the new batch
+    # 3. Add discontinuity before the new batch
     if existing_segments:
         existing_segments.append({'type': 'discontinuity', 'lines': ["#EXT-X-DISCONTINUITY"]})
-    
-    for inf, filename in new_segments:
-        existing_segments.append({
-            'type': 'segment',
-            'lines': [inf, filename]
-        })
-
-    # 4. Sliding Window (Keep last ~20 segments approx 80s)
-    MAX_SEGMENTS = 20
-    
-    # Count actual segments (excluding discontinuity tags)
-    total_segments = sum(1 for s in existing_segments if s['type'] == 'segment')
-    
-    segments_to_remove = 0
-    if total_segments > MAX_SEGMENTS:
-        segments_to_remove = total_segments - MAX_SEGMENTS
-    
-    # Remove from front
-    removed_count = 0
-    while removed_count < segments_to_remove and existing_segments:
-        item = existing_segments.pop(0)
-        if item['type'] == 'segment':
-            removed_count += 1
-            # Optionally delete the file from disk here if we want to clean up
-            # os.remove(os.path.join(FEED_DIR, item['lines'][1]))
-
-    # Update sequence number
-    current_sequence += removed_count
-
-    # 5. Write Master Playlist
-    with open(master_playlist_path, "w") as f:
-        f.write("#EXTM3U\n")
-        f.write("#EXT-X-VERSION:3\n")
-        f.write("#EXT-X-TARGETDURATION:5\n") # 4s segments, but maybe 5 to be safe
-        f.write(f"#EXT-X-MEDIA-SEQUENCE:{current_sequence}\n")
-        
-        for item in existing_segments:
-            for line in item['lines']:
-                f.write(f"{line}\n")
-                
-    print(f"Updated HLS feed. Sequence: {current_sequence}, Segments: {len(existing_segments)}")
 
     # Cleanup temp playlist
     os.remove(temp_playlist_path)
@@ -244,9 +197,36 @@ def broadcast_command(args):
     with open(processed_path, "w") as f:
         json.dump(list(processed_ids), f, indent=2)
 
-    # Wait for duration
-    print(f"Broadcasting for {duration:.2f} seconds...")
-    time.sleep(duration)
+    # 4. Real-time publishing: add segments one at a time with delay
+    print(f"Broadcasting {len(new_segments)} segments in real-time...")
+    
+    for i, (inf, filename) in enumerate(new_segments):
+        # Add this segment
+        existing_segments.append({
+            'type': 'segment',
+            'lines': [inf, filename]
+        })
+        
+        # Write updated playlist
+        with open(master_playlist_path, "w") as f:
+            f.write("#EXTM3U\n")
+            f.write("#EXT-X-VERSION:3\n")
+            f.write("#EXT-X-TARGETDURATION:5\n")
+            f.write(f"#EXT-X-MEDIA-SEQUENCE:{current_sequence}\n")
+            for item in existing_segments:
+                for line in item['lines']:
+                    f.write(f"{line}\n")
+        
+        # Extract segment duration from EXTINF line (format: "#EXTINF:4.123456,ID:...")
+        segment_duration = float(inf.split(":")[1].split(",")[0])
+        print(f"  Segment {i+1}/{len(new_segments)}: {filename} ({segment_duration:.2f}s)")
+        
+        # Wait before publishing next segment
+        # Publish next segment 2s early so frontend can fetch/decode before current ends
+        if i < len(new_segments) - 1:
+            wait_time = max(0, segment_duration - 2.0)
+            time.sleep(wait_time)
+    
     print("Broadcast complete.")
 
 def main():
