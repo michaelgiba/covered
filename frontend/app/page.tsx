@@ -15,13 +15,13 @@ interface Topic {
     title: string;
     context: string;
     sender?: string;
+    status: string;
 }
 
 
 
 export default function Home() {
-    const { data: topics } = useSWR<Topic[]>("/data/topics.json", fetcher, { refreshInterval: 1000 });
-    const { data: processedTopics } = useSWR<string[]>("/data/processed_topics.json", fetcher, { refreshInterval: 1000 });
+    const { data: topics } = useSWR<Topic[]>("/data/topics_on_deck.json", fetcher, { refreshInterval: 1000 });
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -55,7 +55,7 @@ export default function Home() {
     const activeId = playingTopicId;
 
     // Filter topics for queue
-    const queue = topics?.filter(t => !processedTopics?.includes(t.id) && t.id !== activeId) || [];
+    const queue = topics?.filter(t => t.status === 'pending' && t.id !== activeId) || [];
     const displayQueue = showAllQueue ? queue : queue.slice(0, 1);
 
     // Construct current topic object for modal if needed
@@ -167,7 +167,7 @@ export default function Home() {
 
                             {queue.length === 0 && (
                                 <div className="text-center text-stone-400 text-xs py-4">
-                                    Queue is empty.
+                                    Email demo@covered.com to add topics to the queue.
                                 </div>
                             )}
                         </div>

@@ -27,7 +27,5 @@ yarn-debug.log*
 yarn-error.log*
 
 # Project Data
-data/audio/
-data/segments/
-data/*.json
+data/
 # Keep the data directory itself if needed, but ignore contents

@@ -13,6 +13,7 @@ class Topic(BaseModel):
     title: str
     context: str
     sender: Optional[str] = None
+    status: str = "pending"
 
 class TopicList(BaseModel):
     topics: List[Topic]

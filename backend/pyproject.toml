@@ -19,7 +19,8 @@ dependencies = [
     "librosa",
     "ml-collections",
     "absl-py",
-    "soundfile"
+    "soundfile",
+    "m3u8>=6.0.0",
 ]
 
 [tool.uv]
