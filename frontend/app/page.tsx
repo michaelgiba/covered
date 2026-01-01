@@ -5,8 +5,10 @@ import useSWR from "swr";
 import { Visualizer } from "@/components/Visualizer";
 import { Logo } from "@/components/Logo";
 import { TopicModal } from "@/components/TopicModal";
-import { Play, Pause, SkipForward } from "lucide-react";
+import { ScrollingText } from "@/components/ScrollingText";
+import { Play, Pause, SkipForward, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -15,8 +17,15 @@ interface Topic {
     title: string;
     context: string;
     sender?: string;
+    timestamp?: string;
     status: string;
 }
+
+const formatTime = (isoString?: string) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
 
 
 
@@ -29,6 +38,9 @@ export default function Home() {
     const [hasStarted, setHasStarted] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
     const [playingTopicId, setPlayingTopicId] = useState<string | null>(null);
+
+    // Keep screen awake when the session has started
+    useWakeLock(hasStarted);
 
     const togglePlay = () => {
         if (isPlaying) {
@@ -75,10 +87,10 @@ export default function Home() {
 
             {/* Email Banner */}
             <a
-                href="mailto:demo@covered.com"
+                href="mailto:coveredappinbox@gmail.com"
                 className="absolute top-20 md:top-6 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-white/50 backdrop-blur-md rounded-full border border-stone-200 shadow-sm text-xs text-stone-500 z-20 hover:bg-white/80 transition-colors cursor-pointer whitespace-nowrap"
             >
-                Email <span className="text-stone-700 font-medium">demo@covered.com</span> with topics you'd like covered
+                Email <span className="text-stone-700 font-medium">coveredappinbox@gmail.com</span> with topics you'd like covered
             </a>
 
             <div className="flex flex-col items-center justify-center w-full max-w-xl gap-8 z-10">
@@ -118,7 +130,7 @@ export default function Home() {
                             <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Live</span>
                         </div>
                         <div className="w-px h-4 bg-stone-300"></div>
-                        <div className="relative overflow-hidden min-w-[100px]">
+                        <div className="relative overflow-hidden min-w-[100px] max-w-[200px]">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={currentTopic?.id || "waiting"}
@@ -126,9 +138,18 @@ export default function Home() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.3 }}
-                                    className="text-sm font-medium text-stone-900 truncate"
                                 >
-                                    {currentTopic?.title || "Waiting..."}
+                                    <div className="flex flex-col">
+                                        <ScrollingText
+                                            text={currentTopic?.title || "Waiting..."}
+                                            className="text-sm font-medium text-stone-900"
+                                        />
+                                        {currentTopic && (
+                                            <span className="text-[10px] text-stone-500 truncate">
+                                                {currentTopic.sender || "Anonymous"}
+                                            </span>
+                                        )}
+                                    </div>
                                 </motion.div>
                             </AnimatePresence>
                         </div>
@@ -157,9 +178,21 @@ export default function Home() {
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10, transition: { duration: 0.2 } }}
                                     >
-                                        <span className={`text-sm font-medium truncate transition-colors ${index === 0 ? 'text-purple-900' : 'text-stone-700 group-hover:text-purple-700'
-                                            }`}>
-                                            {topic.title}
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className={`p-2 rounded-full ${index === 0 ? 'bg-purple-100 text-purple-600' : 'bg-stone-100 text-stone-400'}`}>
+                                                <Mail size={16} />
+                                            </div>
+                                            <div className="flex flex-col overflow-hidden">
+                                                <span className={`text-sm font-medium truncate transition-colors ${index === 0 ? 'text-purple-900' : 'text-stone-700 group-hover:text-purple-700'}`}>
+                                                    {topic.title}
+                                                </span>
+                                                <span className="text-[10px] text-stone-400 truncate">
+                                                    {topic.sender || "Anonymous"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-medium text-stone-400 whitespace-nowrap ml-2">
+                                            {formatTime(topic.timestamp)}
                                         </span>
                                     </motion.div>
                                 ))}
@@ -167,7 +200,8 @@ export default function Home() {
 
                             {queue.length === 0 && (
                                 <div className="text-center text-stone-400 text-xs py-4">
-                                    Email demo@covered.com to add topics to the queue.
+                                    There is nothing in the queue!<br /> <br />
+                                    <a href="mailto:coveredappinbox@gmail.com" className="ext-stone-700 font-medium hover:underline">Email coveredappinbox@gmail.com to add</a>
                                 </div>
                             )}
                         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 // Poll interval in ms
-const POLL_INTERVAL = 500;
+const POLL_INTERVAL = 2000;
 // Pre-buffer time in seconds
 const PRE_BUFFER = 0.5;
 // Crossfade duration in seconds

@@ -4,7 +4,8 @@ import json
 import os
 
 # gemini-2.0-flash-exp
-MODEL = "gemini-2.0-flash-exp"
+MODEL = "gemini-3-flash-preview"
+
 
 class LLMService:
     def prompt_without_search(self, prompt: str, output_model: BaseModel):
