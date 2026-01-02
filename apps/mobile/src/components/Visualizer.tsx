@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import { Volume2, VolumeX } from "@tamagui/lucide-icons";
-import { YStack, XStack, styled } from "tamagui";
+import { YStack, XStack, styled, useTheme } from "tamagui";
 
 interface VisualizerProps {
   isPlaying: boolean;
@@ -47,6 +47,7 @@ export const Visualizer = ({
 }: VisualizerProps) => {
   const barCount = 5;
   const barHeights = useRef<Animated.Value[]>([]);
+  const theme = useTheme();
 
   // Initialize animated values
   if (barHeights.current.length === 0) {
@@ -104,7 +105,7 @@ export const Visualizer = ({
               width: 60,
               height: height,
               borderRadius: 30,
-              backgroundColor: isMuted ? "#E7E5E4" : "#8B5CF6",
+              backgroundColor: isMuted ? theme.stone200.get() : theme.purple.get(),
             }}
           />
         ))}

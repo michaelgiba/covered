@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { useHeadlessHls } from "@/hooks/useHeadlessHls";
+import { useTheme } from "tamagui";
 
 interface VisualizerProps {
   isPlaying: boolean;
@@ -19,6 +20,7 @@ export const Visualizer = ({
   const animationFrameRef = useRef<number | null>(null);
   const timeRef = useRef<number>(0);
   const prevValuesRef = useRef<number[]>([]);
+  const theme = useTheme();
 
   // Use the Headless Hook
   const { initAudio, analyser } = useHeadlessHls({
@@ -135,10 +137,10 @@ export const Visualizer = ({
 
         // Gradient
         const gradient = ctx.createLinearGradient(x, y, x, y + drawHeight);
-        gradient.addColorStop(0, "#8B5CF6"); // Violet
-        gradient.addColorStop(1, "#F97316"); // Orange
+        gradient.addColorStop(0, theme.purple.val); // Violet
+        gradient.addColorStop(1, theme.orange.val); // Orange
 
-        ctx.fillStyle = isMuted ? "#E7E5E4" : gradient; // Gray if muted
+        ctx.fillStyle = isMuted ? theme.stone200.val : gradient; // Gray if muted
 
         // Draw rounded rect manually for better control or use roundRect if supported
         ctx.beginPath();
