@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAudioPlayer, useAudioPlayerStatus, AudioPlayer, AudioStatus } from "expo-audio";
 import { Topic, useTopics, MOBILE_API_URL } from "@speed-code/shared";
 
@@ -19,14 +19,56 @@ interface AudioContextType {
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
+// WARNING: This functionality doesn't ACTUALLY work. 
+// The problem is that HLS compatibility for expo is not really that good
+// or complicated. We are going to adjust our system architecture to directly
+// work with persisted m4a files instead of HLS.
 export const AudioProvider = ({ children }: { children: ReactNode }) => {
     const { data: topics } = useTopics(MOBILE_API_URL);
-    const player = useAudioPlayer(`${MOBILE_API_URL}/feed/stream.m3u8`, {
+    const [streamUrl, setStreamUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (streamUrl) return;
+
+        const checkStream = async () => {
+            console.log("checking stream.")
+            try {
+                const url = `${MOBILE_API_URL}/feed/stream.m3u8`;
+                const res = await fetch(url, { method: "HEAD" });
+                console.log(res);
+                if (res.ok) {
+                    setStreamUrl(url);
+                    console.log(url);
+                }
+            } catch (error) {
+                console.log(error);
+                // Stream not ready yet
+            }
+        };
+
+        const interval = setInterval(checkStream, 2000);
+        checkStream();
+
+        return () => clearInterval(interval);
+    }, [streamUrl]);
+
+    const player = useAudioPlayer(streamUrl || "", {
+        updateInterval: 1000,
         downloadFirst: true,
     });
+
     const status = useAudioPlayerStatus(player);
 
     const [hasStarted, setHasStarted] = useState(false);
+
+    useEffect(() => {
+        if (streamUrl && !hasStarted) {
+            console.log("starting to play: " + streamUrl);
+            player.play();
+            console.log(player);
+            setHasStarted(true);
+        }
+    }, [streamUrl, hasStarted, player]);
 
     const isPlaying = status.playing;
     const isMuted = status.mute;

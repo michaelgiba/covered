@@ -10,7 +10,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 export default function Home() {
-    const { data: topics } = useTopics(WEB_API_URL);
+    const { data: rawTopics } = useTopics(WEB_API_URL);
+
+    // Deduplicate topics to ensure we only show unique items
+    const topics = rawTopics?.filter((topic, index, self) =>
+        index === self.findIndex((t) => t.id === topic.id)
+    );
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
