@@ -10,12 +10,12 @@
   },
   "dependencies": {
     "@speed-code/shared": "^0.0.0",
-    "expo": "~54.0.30",
-    "expo-av": "~16.0.8",
-    "expo-status-bar": "~3.0.9"
+    "expo": "54.0.30",
+    "expo-av": "16.0.8",
+    "expo-status-bar": "3.0.9"
   },
   "devDependencies": {
-    "typescript": "~5.9.2"
+    "typescript": "5.9.2"
   },
   "private": true
 }
