@@ -1,23 +1,20 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { Button } from '@speed-code/shared';
+import { StatusBar } from "expo-status-bar";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LogBox } from "react-native";
+import { HomeScreen } from "./src/screens/HomeScreen";
+import { TamaguiProvider } from "@speed-code/shared";
+
+LogBox.ignoreLogs(["Expo AV has been deprecated"]);
+
+const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <Text>Audio URL: http://localhost:8000/data/feed/stream.m3u8</Text>
-      <Button text="Shared Button" onPress={() => console.log('Pressed')} />
-      <StatusBar style="auto" />
-    </View>
+    <TamaguiProvider defaultTheme="light">
+      <QueryClientProvider client={queryClient}>
+        <HomeScreen />
+        <StatusBar style="auto" />
+      </QueryClientProvider>
+    </TamaguiProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

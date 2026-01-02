@@ -1,13 +1,22 @@
 {
-    "name": "speed-code-mini-agent",
-    "version": "0.0.0",
-    "private": true,
-    "workspaces": [
-        "*"
-    ],
-    "scripts": {
-        "dev": "npm run dev --workspaces",
-        "build": "npm run build --workspaces",
-        "lint": "npm run lint --workspaces"
-    }
+  "name": "speed-code-mini-agent",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "dev:web": "npm run dev --workspace=@speed-code/web",
+    "dev:mobile": "npm start --workspace=@speed-code/mobile",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
 }

@@ -1,36 +1,28 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import useSWR from "swr";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Logo, TopicModal, ScrollingText } from "@/components";
+import { Topic, formatTime } from "@speed-code/shared";
 import { Visualizer } from "@/components/Visualizer";
-import { Logo } from "@/components/Logo";
-import { TopicModal } from "@/components/TopicModal";
-import { ScrollingText } from "@/components/ScrollingText";
-import { Play, Pause, SkipForward, Mail } from "lucide-react";
+import { Mail } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-interface Topic {
-    id: string;
-    title: string;
-    context: string;
-    sender?: string;
-    timestamp?: string;
-    status: string;
-}
-
-const formatTime = (isoString?: string) => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const fetchTopics = async (): Promise<Topic[]> => {
+    const res = await fetch("/data/topics_on_deck.json");
+    if (!res.ok) {
+        throw new Error("Failed to fetch topics");
+    }
+    return res.json();
 };
 
-
-
 export default function Home() {
-    const { data: topics } = useSWR<Topic[]>("/data/topics_on_deck.json", fetcher, { refreshInterval: 1000 });
+    const { data: topics } = useQuery({
+        queryKey: ["topics"],
+        queryFn: fetchTopics,
+        refetchInterval: 1000,
+    });
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -42,10 +34,15 @@ export default function Home() {
     // Keep screen awake when the session has started
     useWakeLock(hasStarted);
 
+    // Keep screen awake when the session has started
+    useWakeLock(hasStarted);
+
+    const handleTopicChange = (topicId: string) => {
+        setPlayingTopicId(topicId);
+    };
+
     const togglePlay = () => {
-        if (isPlaying) {
-            // Pause logic handled by Visualizer via isPlaying prop
-        } else {
+        if (!isPlaying) {
             setHasStarted(true);
         }
         setIsPlaying(!isPlaying);
@@ -57,10 +54,6 @@ export default function Home() {
 
     const handleTopicClick = (topic: Topic) => {
         setSelectedTopic(topic);
-    };
-
-    const handleTopicChange = (topicId: string) => {
-        setPlayingTopicId(topicId);
     };
 
     // Determine active ID: what's actually playing (from HLS metadata)

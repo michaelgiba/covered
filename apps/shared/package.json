@@ -1,19 +1,32 @@
 {
-    "name": "@speed-code/shared",
-    "version": "0.0.0",
-    "main": "./src/index.tsx",
-    "types": "./src/index.tsx",
-    "license": "MIT",
-    "scripts": {
-        "lint": "eslint ."
-    },
-    "peerDependencies": {
-        "react": "*",
-        "react-native": "*"
-    },
-    "devDependencies": {
-        "@types/react": "^19.0.0",
-        "react": "^18.0.0",
-        "typescript": "^5.0.0"
+  "name": "@speed-code/shared",
+  "version": "0.0.0",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.tsx",
+      "default": "./src/index.tsx"
     }
+  },
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@tamagui/animations-react-native": "^1.142.0",
+    "@tamagui/config": "^1.142.0",
+    "@tamagui/core": "^1.142.0",
+    "@tamagui/lucide-icons": "^1.142.0",
+    "@tanstack/react-query": "^5.90.16",
+    "react-native-svg": "^15.15.1",
+    "tamagui": "^1.142.0"
+  }
 }

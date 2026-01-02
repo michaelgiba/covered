@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  transpilePackages: ['tamagui', '@speed-code/shared', 'react-native-svg', 'react-native-reanimated'],
+  turbopack: {},
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'react-native$': 'react-native-web',
+      'react-native-svg$': 'react-native-svg/lib/commonjs',
+    };
+    config.resolve.extensions = ['.web.js', '.web.ts', '.web.tsx', ...config.resolve.extensions];
+    return config;
+  },
 };
 
 export default nextConfig;

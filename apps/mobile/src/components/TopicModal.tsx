@@ -1,6 +1,14 @@
 import React from "react";
-import { X } from "lucide-react";
-import { Button, Dialog, Text, YStack, XStack, Paragraph } from "tamagui";
+import { X } from "@tamagui/lucide-icons";
+import {
+  Button,
+  Dialog,
+  Sheet,
+  Text,
+  YStack,
+  XStack,
+  Paragraph,
+} from "tamagui";
 
 interface Topic {
   id: string;
@@ -99,7 +107,7 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
               right="$4"
               size="$3"
               circular
-              icon={<X size={16} />}
+              icon={X}
               chromeless
               theme="alt2"
             />
