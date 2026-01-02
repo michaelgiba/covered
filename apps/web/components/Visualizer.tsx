@@ -54,7 +54,7 @@ export const Visualizer = ({ isPlaying, isMuted, onToggleMute, onTopicChange }: 
             if (isPlaying && analyser) {
                 bufferLength = analyser.frequencyBinCount;
                 dataArray = new Uint8Array(bufferLength);
-                analyser.getByteFrequencyData(dataArray);
+                analyser.getByteFrequencyData(dataArray as any);
             }
 
             // Draw Bars

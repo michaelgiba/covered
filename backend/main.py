@@ -9,6 +9,9 @@ import contextlib
 import tempfile
 import asyncio
 import logging
+import aiohttp
+from aiohttp import web
+import aiohttp_cors
 from services.script_writing import ScriptWritingService
 from services.tts import TTSService
 from services.topic_service import TopicService
@@ -29,7 +32,8 @@ system_logger = logging.getLogger("SYSTEM")
 # Determine absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
-FEED_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/public/data/feed"))
+DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
+FEED_DIR = os.path.join(DATA_DIR, "feed")
 
 
 def ensure_directories():
@@ -246,6 +250,39 @@ async def publishing_loop(queue: asyncio.Queue, processing_ids: set):
         broadcaster_logger.info("Broadcast complete.")
 
 
+async def start_server():
+    app = web.Application()
+
+    # Configure CORS
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+            )
+        },
+    )
+
+    # Serve DATA_DIR at /data
+    # Ensure directory exists
+    os.makedirs(DATA_DIR, exist_ok=True)
+    
+    # Add static route
+    resource = app.router.add_static("/data", DATA_DIR)
+    
+    # Add CORS to the static resource
+    cors.add(resource)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8000)
+    await site.start()
+    system_logger.info("HTTP Server started at http://0.0.0.0:8000/data")
+    return runner
+
+
 async def curation_loop():
     system_logger.info("Starting Curation Loop...")
     while True:
@@ -272,6 +309,9 @@ async def run_loop(min_duration: int | None):
         audio_generation_loop(audio_queue, processing_ids)
     )
     publishing_task = asyncio.create_task(publishing_loop(audio_queue, processing_ids))
+    
+    # Start Server
+    server_runner = await start_server()
 
     tasks = [curation_task, audio_gen_task, publishing_task]
 

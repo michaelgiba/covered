@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "lib": [
+            "dom",
+            "esnext"
+        ],
+        "declaration": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "skipLibCheck": true,
+        "jsx": "react",
+        "esModuleInterop": true,
+        "strict": true
+    }
+}

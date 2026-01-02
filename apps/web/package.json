@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "@speed-code/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@speed-code/shared": "^0.0.0",
     "framer-motion": "^12.23.26",
     "hls.js": "^1.6.15",
     "lucide-react": "^0.562.0",

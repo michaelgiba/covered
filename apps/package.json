@@ -1,0 +1,13 @@
+{
+    "name": "speed-code-mini-agent",
+    "version": "0.0.0",
+    "private": true,
+    "workspaces": [
+        "*"
+    ],
+    "scripts": {
+        "dev": "npm run dev --workspaces",
+        "build": "npm run build --workspaces",
+        "lint": "npm run lint --workspaces"
+    }
+}
