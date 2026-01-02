@@ -14,6 +14,36 @@ interface HeadlessHlsParams {
     onTopicChange?: (topicId: string) => void;
 }
 
+interface Segment {
+    fullUrl: string;
+    metadata: string;
+}
+
+const parseHlsManifest = (text: string, baseUrl: string): Segment[] => {
+    const lines = text.split('\n');
+    const segments: Segment[] = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || line.startsWith('#')) continue;
+
+        const fullUrl = new URL(line, baseUrl).toString();
+        const metadata = i > 0 ? lines[i - 1] : '';
+        segments.push({ fullUrl, metadata });
+    }
+    return segments;
+};
+
+const extractTopicId = (metadata: string): string | null => {
+    const match = metadata.match(/,ID:([a-f0-9-]+)/i);
+    return match ? match[1] : null;
+};
+
+const fetchAudioSegment = async (ctx: AudioContext, url: string): Promise<AudioBuffer> => {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return await ctx.decodeAudioData(arrayBuffer.slice(0));
+};
+
 export const useHeadlessHls = ({ src, isPlaying, isMuted = false, onTopicChange }: HeadlessHlsParams) => {
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
@@ -97,6 +127,29 @@ export const useHeadlessHls = ({ src, isPlaying, isMuted = false, onTopicChange 
         return startTime + duration - CROSSFADE;
     };
 
+    const processSegment = async (ctx: AudioContext, segment: Segment, strategy: 'immediate' | 'queue') => {
+        // Check for topic change
+        const topicId = extractTopicId(segment.metadata);
+        if (topicId && topicId !== currentTopicIdRef.current) {
+            currentTopicIdRef.current = topicId;
+            onTopicChange?.(topicId);
+        }
+
+        // Fetch and decode
+        const audioBuffer = await fetchAudioSegment(ctx, segment.fullUrl);
+
+        // Determine start time
+        let startTime;
+        if (strategy === 'immediate') {
+            startTime = ctx.currentTime;
+        } else {
+            startTime = Math.max(ctx.currentTime + PRE_BUFFER, nextStartTimeRef.current);
+        }
+
+        // Schedule
+        nextStartTimeRef.current = scheduleWithCrossfade(ctx, audioBuffer, startTime);
+    };
+
     // Poll Manifest and Schedule Audio
     const scheduleLoop = useCallback(async () => {
         if (!isPlaying || !audioContextRef.current) return;
@@ -104,58 +157,34 @@ export const useHeadlessHls = ({ src, isPlaying, isMuted = false, onTopicChange 
         const ctx = audioContextRef.current;
         if (ctx.state === 'suspended') await ctx.resume();
 
-        const response = await fetch(src);
-        const text = await response.text();
-        const lines = text.split('\n');
-
-        const segments: { fullUrl: string; metadata: string }[] = [];
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line || line.startsWith('#')) continue;
-
+        try {
+            const response = await fetch(src);
+            const text = await response.text();
             const baseUrl = new URL(src, window.location.origin).toString();
-            const fullUrl = new URL(line, baseUrl).toString();
-            const metadata = i > 0 ? lines[i - 1] : '';
-            segments.push({ fullUrl, metadata });
-        }
+            const segments = parseHlsManifest(text, baseUrl);
 
-        if (!hasSeenInitialManifest.current) {
-            hasSeenInitialManifest.current = true;
-            for (const seg of segments) {
-                processedSegments.current.add(seg.fullUrl);
-            }
-            if (segments.length > 0) {
-                const lastSeg = segments[segments.length - 1];
-                const topicMatch = lastSeg.metadata.match(/,ID:([a-f0-9-]+)/i);
-                if (topicMatch && topicMatch[1] !== currentTopicIdRef.current) {
-                    currentTopicIdRef.current = topicMatch[1];
-                    onTopicChange?.(topicMatch[1]);
+            if (!hasSeenInitialManifest.current) {
+                hasSeenInitialManifest.current = true;
+                // Mark all as processed so we don't play old history
+                for (const seg of segments) {
+                    processedSegments.current.add(seg.fullUrl);
                 }
-                const audioResp = await fetch(lastSeg.fullUrl);
-                const arrayBuffer = await audioResp.arrayBuffer();
-                const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-                nextStartTimeRef.current = scheduleWithCrossfade(ctx, audioBuffer, ctx.currentTime);
+
+                // Play only the very last segment to jump to "live"
+                if (segments.length > 0) {
+                    const lastSeg = segments[segments.length - 1];
+                    await processSegment(ctx, lastSeg, 'immediate');
+                }
+            } else {
+                // Play any new segments
+                for (const seg of segments) {
+                    if (processedSegments.current.has(seg.fullUrl)) continue;
+                    processedSegments.current.add(seg.fullUrl);
+                    await processSegment(ctx, seg, 'queue');
+                }
             }
-            schedulerTimer.current = setTimeout(scheduleLoop, POLL_INTERVAL);
-            return;
-        }
-
-        for (const seg of segments) {
-            if (processedSegments.current.has(seg.fullUrl)) continue;
-            processedSegments.current.add(seg.fullUrl);
-
-            const topicMatch = seg.metadata.match(/,ID:([a-f0-9-]+)/i);
-            if (topicMatch && topicMatch[1] !== currentTopicIdRef.current) {
-                currentTopicIdRef.current = topicMatch[1];
-                onTopicChange?.(topicMatch[1]);
-            }
-
-            const audioResp = await fetch(seg.fullUrl);
-            const arrayBuffer = await audioResp.arrayBuffer();
-            const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-
-            const startTime = Math.max(ctx.currentTime + PRE_BUFFER, nextStartTimeRef.current);
-            nextStartTimeRef.current = scheduleWithCrossfade(ctx, audioBuffer, startTime);
+        } catch (error) {
+            console.error('Error in scheduleLoop:', error);
         }
 
         schedulerTimer.current = setTimeout(scheduleLoop, POLL_INTERVAL);

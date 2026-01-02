@@ -18,7 +18,7 @@ from models.data import Topic
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] [%(name)s] %(message)s",
-    datefmt="%H:%M:%S"
+    datefmt="%H:%M:%S",
 )
 
 curator_logger = logging.getLogger("CURATOR")
@@ -55,9 +55,7 @@ def generate_audio_file(topic: Topic) -> tuple[str, str]:
     script_writing_service = ScriptWritingService()
 
     sender_info = (
-        f"Sender: {topic.sender}\n"
-        if topic.sender
-        else "Sender: Anonymous Listener\n"
+        f"Sender: {topic.sender}\n" if topic.sender else "Sender: Anonymous Listener\n"
     )
     email_content = f"{sender_info}Subject: {topic.title}\nBody: {topic.context}"
 
@@ -66,11 +64,11 @@ def generate_audio_file(topic: Topic) -> tuple[str, str]:
     # Generate Audio
     audio_gen_logger.info(f"Generating Audio for topic: {topic.title}")
     tts_service = TTSService()
-    
+
     # Create a temp file that persists until explicitly deleted
     fd, audio_path = tempfile.mkstemp(suffix=f"_{topic.id}.wav")
     os.close(fd)
-    
+
     try:
         tts_service.generate_audio(script_text, audio_path)
         return script_text, audio_path
@@ -112,11 +110,8 @@ def generate_hls_context(topic: Topic, audio_path: str):
             segment_filename_pattern,
         ]
 
-        subprocess.run(
-            cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         yield temp_playlist_path
-
 
 
 async def merge_and_broadcast(temp_playlist_path, master_playlist_path, topic_id):
@@ -140,7 +135,9 @@ async def merge_and_broadcast(temp_playlist_path, master_playlist_path, topic_id
         new_segments[0].discontinuity = True
 
     # 4. Real-time publishing
-    broadcaster_logger.info(f"Broadcasting {len(new_segments)} segments in real-time...")
+    broadcaster_logger.info(
+        f"Broadcasting {len(new_segments)} segments in real-time..."
+    )
 
     for i, segment in enumerate(new_segments):
         # Move segment file from temp dir to FEED_DIR
@@ -182,7 +179,7 @@ async def merge_and_broadcast(temp_playlist_path, master_playlist_path, topic_id
 async def audio_generation_loop(queue: asyncio.Queue, processing_ids: set):
     system_logger.info("Starting Audio Generation Loop...")
     topic_service = TopicService()
-    
+
     while True:
         # Check if queue is full
         if queue.full():
@@ -191,34 +188,36 @@ async def audio_generation_loop(queue: asyncio.Queue, processing_ids: set):
 
         # Get available topics
         available_topics = topic_service.get_available_topics()
-        
+
         # Filter out topics already being processed
         candidates = [t for t in available_topics if t.id not in processing_ids]
-        
+
         if not candidates:
             await asyncio.sleep(5)
             continue
-            
+
         topic = candidates[0]
         processing_ids.add(topic.id)
-        
+
         # Generate audio (blocking operation in thread)
         audio_gen_logger.info(f"Generating Audio for {topic.title}")
-        
+
         script_text, audio_path = await asyncio.to_thread(generate_audio_file, topic)
-        
+
         # Put into queue
         await queue.put((topic, script_text, audio_path))
-        audio_gen_logger.info(f"Audio ready for {topic.title}. Queue size: {queue.qsize()}")
+        audio_gen_logger.info(
+            f"Audio ready for {topic.title}. Queue size: {queue.qsize()}"
+        )
 
 
 async def publishing_loop(queue: asyncio.Queue, processing_ids: set):
     system_logger.info("Starting Publishing Loop...")
     topic_service = TopicService()
-    
-    while True:      
+
+    while True:
         topic, script_text, audio_path = await queue.get()
-        
+
         broadcaster_logger.info(f"Publishing Topic: {topic.title}")
 
         # Now we merge this into the master stream.m3u8
@@ -234,15 +233,14 @@ async def publishing_loop(queue: asyncio.Queue, processing_ids: set):
 
             # Mark topic as processed (removes from on deck)
             topic_service.mark_topics_processed([topic.id])
-    
 
         if os.path.exists(audio_path):
             os.remove(audio_path)
-        
+
         # Remove from processing set
         if topic.id in processing_ids:
             processing_ids.remove(topic.id)
-            
+
         queue.task_done()
 
         broadcaster_logger.info("Broadcast complete.")
@@ -261,9 +259,6 @@ async def curation_loop():
         await asyncio.sleep(5)
 
 
-
-
-
 async def run_loop(min_duration: int | None):
     start_time = time.time()
 
@@ -273,7 +268,9 @@ async def run_loop(min_duration: int | None):
 
     # Create tasks
     curation_task = asyncio.create_task(curation_loop())
-    audio_gen_task = asyncio.create_task(audio_generation_loop(audio_queue, processing_ids))
+    audio_gen_task = asyncio.create_task(
+        audio_generation_loop(audio_queue, processing_ids)
+    )
     publishing_task = asyncio.create_task(publishing_loop(audio_queue, processing_ids))
 
     tasks = [curation_task, audio_gen_task, publishing_task]
@@ -283,7 +280,9 @@ async def run_loop(min_duration: int | None):
             while True:
                 elapsed = time.time() - start_time
                 if elapsed >= min_duration:
-                    system_logger.info(f"Minimum duration of {min_duration}s reached. Exiting.")
+                    system_logger.info(
+                        f"Minimum duration of {min_duration}s reached. Exiting."
+                    )
                     break
                 await asyncio.sleep(1)
 

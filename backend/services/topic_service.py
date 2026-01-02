@@ -42,8 +42,6 @@ class TopicService:
         with open(self.topics_path, "w") as f:
             json.dump([t.model_dump() for t in topics], f, indent=2)
 
-
-
     def _load_cursor(self) -> Optional[str]:
         if not os.path.exists(self.cursor_path):
             return None
@@ -137,6 +135,5 @@ class TopicService:
 
                 if latest_timestamp:
                     self._save_cursor(latest_timestamp)
-
 
             return new_topics
