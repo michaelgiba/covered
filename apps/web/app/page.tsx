@@ -3,26 +3,14 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Logo, TopicModal, ScrollingText } from "@/components";
-import { Topic, formatTime } from "@speed-code/shared";
+import { Topic, formatTime, useTopics, WEB_API_URL } from "@speed-code/shared";
 import { Visualizer } from "@/components/Visualizer";
 import { Mail } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
-const fetchTopics = async (): Promise<Topic[]> => {
-    const res = await fetch("/data/topics_on_deck.json");
-    if (!res.ok) {
-        throw new Error("Failed to fetch topics");
-    }
-    return res.json();
-};
-
 export default function Home() {
-    const { data: topics } = useQuery({
-        queryKey: ["topics"],
-        queryFn: fetchTopics,
-        refetchInterval: 1000,
-    });
+    const { data: topics } = useTopics(WEB_API_URL);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);

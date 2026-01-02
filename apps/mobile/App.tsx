@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LogBox } from "react-native";
 import { HomeScreen } from "./src/screens/HomeScreen";
 import { TamaguiProvider } from "@speed-code/shared";
+import { AudioProvider } from "./src/context/AudioContext";
 
 LogBox.ignoreLogs(["Expo AV has been deprecated"]);
 
@@ -12,8 +13,10 @@ export default function App() {
   return (
     <TamaguiProvider defaultTheme="light">
       <QueryClientProvider client={queryClient}>
-        <HomeScreen />
-        <StatusBar style="auto" />
+        <AudioProvider>
+          <HomeScreen />
+          <StatusBar style="auto" />
+        </AudioProvider>
       </QueryClientProvider>
     </TamaguiProvider>
   );

@@ -32,7 +32,6 @@ system_logger = logging.getLogger("SYSTEM")
 # Determine absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
-DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
 FEED_DIR = os.path.join(DATA_DIR, "feed")
 
 
@@ -269,6 +268,7 @@ async def start_server():
     # Ensure directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
     
+    print(DATA_DIR)
     # Add static route
     resource = app.router.add_static("/data", DATA_DIR)
     
