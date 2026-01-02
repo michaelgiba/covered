@@ -111,13 +111,11 @@ export const Visualizer = ({
         ))}
       </BarsContainer>
 
-      <IconWrapper>
-        {isMuted ? (
+      {isMuted && (
+        <IconWrapper>
           <VolumeX size={24} color="$stone900" />
-        ) : (
-          <Volume2 size={24} color="$stone900" />
-        )}
-      </IconWrapper>
+        </IconWrapper>
+      )}
     </VisualizerContainer>
   );
 };

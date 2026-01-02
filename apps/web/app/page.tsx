@@ -8,6 +8,7 @@ import { Visualizer } from "@/components/Visualizer";
 import { Mail } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useTopicPlayer } from "@/hooks/useTopicPlayer";
 
 export default function Home() {
     const { data: rawTopics } = useTopics(WEB_API_URL);
@@ -22,17 +23,16 @@ export default function Home() {
     const [showAllQueue, setShowAllQueue] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-    const [playingTopicId, setPlayingTopicId] = useState<string | null>(null);
+
+
+    const { initAudio, analyser, currentTopicId, playedTopicIds } = useTopicPlayer({
+        topics: topics || [],
+        isPlaying,
+        isMuted,
+    });
 
     // Keep screen awake when the session has started
     useWakeLock(hasStarted);
-
-    // Keep screen awake when the session has started
-    useWakeLock(hasStarted);
-
-    const handleTopicChange = (topicId: string) => {
-        setPlayingTopicId(topicId);
-    };
 
     const togglePlay = () => {
         if (!isPlaying) {
@@ -49,15 +49,16 @@ export default function Home() {
         setSelectedTopic(topic);
     };
 
-    // Determine active ID: what's actually playing (from HLS metadata)
-    const activeId = playingTopicId;
+    // Determine active ID: what's actually playing
+    const activeId = currentTopicId;
 
     // Filter topics for queue
-    const queue = topics?.filter(t => t.status === 'pending' && t.id !== activeId) || [];
+    const queue = topics?.filter(t => t.playback_content_id && !playedTopicIds.has(t.id) && t.id !== activeId) || [];
     const displayQueue = showAllQueue ? queue : queue.slice(0, 1);
 
     // Construct current topic object for modal if needed
     const currentTopic = topics?.find(t => t.id === activeId) || null;
+
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-start pt-32 md:pt-24 p-6 bg-[#F5F5F7] text-stone-900 font-sans relative overflow-hidden">
@@ -85,10 +86,11 @@ export default function Home() {
                 <div className="flex flex-col items-center w-full relative">
 
                     <Visualizer
+                        analyser={analyser}
+                        initAudio={initAudio}
                         isPlaying={isPlaying}
                         isMuted={isMuted}
                         onToggleMute={toggleMute}
-                        onTopicChange={handleTopicChange}
                     />
 
                     {/* Start Overlay */}

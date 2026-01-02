@@ -18,7 +18,7 @@ class TopicService:
         self.data_dir = os.path.abspath(os.path.join(self.base_dir, "../data"))
         self.state_dir = os.path.join(self.data_dir, "topic_service_state")
 
-        self.topics_path = os.path.join(self.data_dir, "topics_on_deck.json")
+        self.topics_path = os.path.join(self.data_dir, "topics.json")
         self.cursor_path = os.path.join(self.state_dir, "cursor.json")
 
         self._ensure_directories()
@@ -34,7 +34,16 @@ class TopicService:
         try:
             with open(self.topics_path, "r") as f:
                 topics_data = json.load(f)
-                return [Topic(**t) for t in topics_data]
+                valid_topics = []
+                for t in topics_data:
+                    try:
+                        # Handle migration: if timestamp is missing, use current time or skip?
+                        # If status is present, it's ignored.
+                        # If timestamp is missing, Pydantic raises error.
+                        valid_topics.append(Topic(**t))
+                    except Exception:
+                        continue
+                return valid_topics
         except json.JSONDecodeError:
             return []
 
@@ -63,31 +72,19 @@ class TopicService:
         """
         with self._file_lock:
             all_topics = self._load_all_topics()
-            return [t for t in all_topics if t.status == "pending"]
+            return [t for t in all_topics if t.playback_content_id is None]
 
-    def mark_topic_active(self, topic_id: str):
+    def update_topic_playback(self, topic_id: str, playback_id: str):
         """
-        Marks the given topic ID as active.
+        Updates the topic with the given playback ID.
         """
         with self._file_lock:
             all_topics = self._load_all_topics()
             for topic in all_topics:
                 if topic.id == topic_id:
-                    topic.status = "active"
+                    topic.playback_content_id = playback_id
                     break
             self._save_topics(all_topics)
-
-    def mark_topics_processed(self, topic_ids: List[str]):
-        """
-        Marks the given topic IDs as processed and removes from topics file.
-        """
-        with self._file_lock:
-            all_topics = self._load_all_topics()
-
-            # Remove processed topics from the list
-            final_topics = [t for t in all_topics if t.id not in topic_ids]
-
-            self._save_topics(final_topics)
 
     def curate_from_emails(self, count: int = 50) -> List[Topic]:
         """
@@ -119,7 +116,6 @@ class TopicService:
                         context=email.body,
                         sender=email.sender,
                         timestamp=email.timestamp,
-                        status="pending",
                     )
                 )
 

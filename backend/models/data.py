@@ -15,8 +15,13 @@ class Topic(BaseModel):
     title: str
     context: str
     sender: Optional[str] = None
-    timestamp: Optional[str] = None
-    status: str = "pending"
+    timestamp: str  # Changed to required
+    playback_content_id: Optional[str] = None
+
+
+class PlaybackContent(BaseModel):
+    id: str
+    m4a_file_url: str
 
 
 class TopicList(BaseModel):

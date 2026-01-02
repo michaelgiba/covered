@@ -3,6 +3,6 @@ export interface Topic {
   title: string;
   context: string;
   sender?: string;
-  timestamp?: string;
-  status: string;
+  timestamp: string;
+  playback_content_id?: string;
 }

@@ -1,34 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-import { useHeadlessHls } from "@/hooks/useHeadlessHls";
 import { useTheme } from "tamagui";
+import { Topic } from "@speed-code/shared";
 
 interface VisualizerProps {
+  analyser: AnalyserNode | null;
+  initAudio: () => void;
   isPlaying: boolean;
   isMuted: boolean; // Note: Web Audio gain node needed for true mute
   onToggleMute: () => void;
-  onTopicChange?: (topicId: string) => void;
 }
 
 export const Visualizer = ({
+  analyser,
+  initAudio,
   isPlaying,
   isMuted,
   onToggleMute,
-  onTopicChange,
 }: VisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const timeRef = useRef<number>(0);
   const prevValuesRef = useRef<number[]>([]);
   const theme = useTheme();
-
-  // Use the Headless Hook
-  const { initAudio, analyser } = useHeadlessHls({
-    src: "/data/feed/stream.m3u8",
-    isPlaying,
-    isMuted,
-    onTopicChange,
-  });
 
   // Handle User Interaction (Must be attached to a button/click)
   // You likely have a Play button higher up, pass `initAudio` to it or click here

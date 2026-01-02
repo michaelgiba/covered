@@ -1,0 +1,3 @@
+Alright, let's see what we've got here. This one comes from michaelgiba at gmail dot com. The subject is 'Difference between next and react native?' and the message is just that: 'Difference between next and react native?' Simple enough. Let's take a look.
+
+Hey Michael. Keeping it simple: Next.js is for building websites you open in a browser. React Native is for making mobile apps you download from an app store. One is for the web, the other is for your phone. Hope that helps!

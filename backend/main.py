@@ -3,19 +3,17 @@ import os
 import json
 import time
 import subprocess
-import shutil
-import m3u8
 import contextlib
 import tempfile
 import asyncio
 import logging
-import aiohttp
-from aiohttp import web
+import uuid
 import aiohttp_cors
+from aiohttp import web
 from services.script_writing import ScriptWritingService
 from services.tts import TTSService
 from services.topic_service import TopicService
-from models.data import Topic
+from models.data import Topic, PlaybackContent
 
 # Configure Logging
 logging.basicConfig(
@@ -26,18 +24,17 @@ logging.basicConfig(
 
 curator_logger = logging.getLogger("CURATOR")
 audio_gen_logger = logging.getLogger("AUDIO_GEN")
-broadcaster_logger = logging.getLogger("BROADCAST")
 system_logger = logging.getLogger("SYSTEM")
 
 # Determine absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
-FEED_DIR = os.path.join(DATA_DIR, "feed")
+PLAYBACK_DIR = os.path.join(DATA_DIR, "playback_content")
 
 
 def ensure_directories():
     os.makedirs(DATA_DIR, exist_ok=True)
-    os.makedirs(FEED_DIR, exist_ok=True)
+    os.makedirs(PLAYBACK_DIR, exist_ok=True)
 
 
 def curate_step():
@@ -46,7 +43,7 @@ def curate_step():
     topic_service = TopicService()
     topics = topic_service.curate_from_emails(3)
 
-    curator_logger.info(f"Saved {len(topics)} topics to data/topics_on_deck.json")
+    curator_logger.info(f"Saved {len(topics)} topics to data/topics.json")
 
 
 def generate_audio_file(topic: Topic) -> tuple[str, str]:
@@ -82,113 +79,28 @@ def generate_audio_file(topic: Topic) -> tuple[str, str]:
         raise e
 
 
-@contextlib.contextmanager
-def generate_hls_context(topic: Topic, audio_path: str):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        timestamp = int(time.time())
-        temp_playlist_path = os.path.join(temp_dir, f"temp_{topic.id}.m3u8")
-        segment_filename_pattern = os.path.join(
-            temp_dir, f"{timestamp}_{topic.id}_%03d.m4a"
-        )
-
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            audio_path,
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-f",
-            "segment",
-            "-segment_time",
-            "10",
-            "-segment_list",
-            temp_playlist_path,
-            "-segment_list_type",
-            "m3u8",
-            "-segment_format",
-            "mp4",
-            segment_filename_pattern,
-        ]
-
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        yield temp_playlist_path
+def convert_to_m4a(wav_path: str, output_path: str):
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        wav_path,
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-movflags",
+        "+faststart",
+        output_path,
+    ]
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-async def merge_and_broadcast(temp_playlist_path, master_playlist_path, topic_id):
-    # 1. Parse Temp Playlist
-    temp_m3u8 = m3u8.load(temp_playlist_path)
-
-    # 2. Load or Initialize Master Playlist
-    if os.path.exists(master_playlist_path):
-        master_m3u8 = m3u8.load(master_playlist_path)
-    else:
-        master_m3u8 = m3u8.M3U8()
-        master_m3u8.version = 3
-        master_m3u8.target_duration = 5
-        master_m3u8.media_sequence = 0
-
-    # 3. Prepare new segments
-    new_segments = temp_m3u8.segments
-
-    # Handle Discontinuity: If master has segments, the first new segment is a discontinuity
-    if master_m3u8.segments:
-        new_segments[0].discontinuity = True
-
-    # 4. Real-time publishing
-    broadcaster_logger.info(
-        f"Broadcasting {len(new_segments)} segments in real-time..."
-    )
-
-    for i, segment in enumerate(new_segments):
-        # Move segment file from temp dir to FEED_DIR
-        temp_segment_path = os.path.join(
-            os.path.dirname(temp_playlist_path), segment.uri
-        )
-        final_segment_filename = os.path.basename(segment.uri)
-        final_segment_path = os.path.join(FEED_DIR, final_segment_filename)
-
-        shutil.move(temp_segment_path, final_segment_path)
-
-        # Update metadata
-        # Ensure URI is relative (basename)
-        segment.uri = final_segment_filename
-        # Set Title to ID:{id}
-        segment.title = f"ID:{topic_id}"
-
-        # Add to master
-        master_m3u8.segments.append(segment)
-
-        # Update Target Duration if needed
-        if segment.duration > master_m3u8.target_duration:
-            master_m3u8.target_duration = int(segment.duration + 0.99)
-
-        # Write updated playlist
-        with open(master_playlist_path, "w") as f:
-            f.write(master_m3u8.dumps())
-
-        broadcaster_logger.info(
-            f"  Segment {i + 1}/{len(new_segments)}: {segment.uri} ({segment.duration:.2f}s)"
-        )
-
-        # Wait before publishing next segment
-        if i < len(new_segments) - 1:
-            wait_time = max(0, segment.duration - 2.0)
-            await asyncio.sleep(wait_time)
-
-
-async def audio_generation_loop(queue: asyncio.Queue, processing_ids: set):
-    system_logger.info("Starting Audio Generation Loop...")
+async def processing_loop(processing_ids: set):
+    system_logger.info("Starting Processing Loop...")
     topic_service = TopicService()
 
     while True:
-        # Check if queue is full
-        if queue.full():
-            await asyncio.sleep(1)
-            continue
-
         # Get available topics
         available_topics = topic_service.get_available_topics()
 
@@ -202,51 +114,47 @@ async def audio_generation_loop(queue: asyncio.Queue, processing_ids: set):
         topic = candidates[0]
         processing_ids.add(topic.id)
 
-        # Generate audio (blocking operation in thread)
-        audio_gen_logger.info(f"Generating Audio for {topic.title}")
+        try:
+            # Generate audio (blocking operation in thread)
+            audio_gen_logger.info(f"Processing {topic.title}")
 
-        script_text, audio_path = await asyncio.to_thread(generate_audio_file, topic)
+            script_text, wav_path = await asyncio.to_thread(generate_audio_file, topic)
 
-        # Put into queue
-        await queue.put((topic, script_text, audio_path))
-        audio_gen_logger.info(
-            f"Audio ready for {topic.title}. Queue size: {queue.qsize()}"
-        )
+            # Generate Playback ID and paths
+            playback_id = str(uuid.uuid4())
+            m4a_filename = f"{playback_id}.m4a"
+            m4a_path = os.path.join(PLAYBACK_DIR, m4a_filename)
+            json_path = os.path.join(PLAYBACK_DIR, f"{playback_id}.json")
 
+            # Convert to m4a
+            await asyncio.to_thread(convert_to_m4a, wav_path, m4a_path)
 
-async def publishing_loop(queue: asyncio.Queue, processing_ids: set):
-    system_logger.info("Starting Publishing Loop...")
-    topic_service = TopicService()
-
-    while True:
-        topic, script_text, audio_path = await queue.get()
-
-        broadcaster_logger.info(f"Publishing Topic: {topic.title}")
-
-        # Now we merge this into the master stream.m3u8
-        master_playlist_path = os.path.join(FEED_DIR, "stream.m3u8")
-
-        with generate_hls_context(topic, audio_path) as temp_playlist_path:
-            # Mark topic as active
-            topic_service.mark_topic_active(topic.id)
-
-            await merge_and_broadcast(
-                temp_playlist_path, master_playlist_path, topic.id
+            # Create PlaybackContent
+            # URL should be relative or absolute?
+            # "m4a_file_url: str # the URL of where to find the m4a file"
+            # Since we serve /data, the URL should be /data/playback_content/{filename}
+            playback_content = PlaybackContent(
+                id=playback_id,
+                m4a_file_url=f"/data/playback_content/{m4a_filename}",
             )
 
-            # Mark topic as processed (removes from on deck)
-            topic_service.mark_topics_processed([topic.id])
+            # Save PlaybackContent JSON
+            with open(json_path, "w") as f:
+                f.write(playback_content.model_dump_json(indent=2))
 
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+            # Update Topic
+            topic_service.update_topic_playback(topic.id, playback_id)
 
-        # Remove from processing set
-        if topic.id in processing_ids:
+            # Cleanup wav
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+
+            audio_gen_logger.info(f"Completed processing for {topic.title}")
+
+        except Exception as e:
+            audio_gen_logger.error(f"Error processing topic {topic.id}: {e}")
+        finally:
             processing_ids.remove(topic.id)
-
-        queue.task_done()
-
-        broadcaster_logger.info("Broadcast complete.")
 
 
 async def start_server():
@@ -268,7 +176,6 @@ async def start_server():
     # Ensure directory exists
     os.makedirs(DATA_DIR, exist_ok=True)
     
-    print(DATA_DIR)
     # Add static route
     resource = app.router.add_static("/data", DATA_DIR)
     
@@ -293,27 +200,23 @@ async def curation_loop():
             curator_logger.error(f"Error in curation loop: {e}")
 
         # Wait before next curation cycle (e.g., 60 seconds)
-        await asyncio.sleep(5)
+        await asyncio.sleep(60)
 
 
 async def run_loop(min_duration: int | None):
     start_time = time.time()
 
     # Shared state
-    audio_queue = asyncio.Queue(maxsize=3)
     processing_ids = set()
 
     # Create tasks
     curation_task = asyncio.create_task(curation_loop())
-    audio_gen_task = asyncio.create_task(
-        audio_generation_loop(audio_queue, processing_ids)
-    )
-    publishing_task = asyncio.create_task(publishing_loop(audio_queue, processing_ids))
+    processing_task = asyncio.create_task(processing_loop(processing_ids))
     
     # Start Server
     server_runner = await start_server()
 
-    tasks = [curation_task, audio_gen_task, publishing_task]
+    tasks = [curation_task, processing_task]
 
     try:
         if min_duration is not None:
