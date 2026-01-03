@@ -16,7 +16,7 @@ class Topic(BaseModel):
     context: str
     sender: Optional[str] = None
     timestamp: str  # Changed to required
-    playback_content_id: Optional[str] = None
+    playback_content: Optional["PlaybackContent"] = None
 
 
 class PlaybackContent(BaseModel):

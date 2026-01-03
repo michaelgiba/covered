@@ -8,21 +8,32 @@ import {
     ScrollView,
 } from "react-native";
 import { useState } from "react";
-import { Topic, formatTime } from "@speed-code/shared";
-import { Visualizer, TopicModal, Logo, ScrollingText, Queue } from "../components/";
-import { Mail } from "@tamagui/lucide-icons";
+import { Topic, useTopics, MOBILE_API_URL } from "@speed-code/shared";
+import { Visualizer } from "../components/Visualizer";
+import { TopicModal } from "../components/TopicModal";
+import { Logo } from "../components/Logo";
+import { ScrollingText } from "../components/ScrollingText";
+import { TopicList } from "../components/TopicList";
+import { MiniPlayer } from "../components/MiniPlayer";
 import { useAudio } from "../context/AudioContext";
+import { useNavigation } from "../context/NavigationContext";
 
 export const HomeScreen = () => {
     const {
-        isPlaying,
-        isMuted,
-        togglePlay,
-        toggleMute,
-        currentTopic,
-        queue,
         playTopic,
+        currentTopic,
     } = useAudio();
+    const { navigateTo } = useNavigation();
+
+    const { data: rawTopics } = useTopics(MOBILE_API_URL);
+
+    // Deduplicate topics
+    const topics = rawTopics?.filter((topic, index, self) =>
+        index === self.findIndex((t) => t.id === topic.id)
+    );
+
+    // Calculate queue
+    const queue = topics?.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || "")) || [];
 
     const hasStarted = !!currentTopic;
 
@@ -40,59 +51,22 @@ export const HomeScreen = () => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                {/* Visualizer & Active Segment */}
-                <View style={styles.visualizerWrapper}>
-                    <Visualizer
-                        isPlaying={isPlaying}
-                        isMuted={isMuted}
-                        onToggleMute={toggleMute}
-                        analyser={null}
-                    />
-
-                    {/* Start Overlay */}
-                    {!hasStarted && (
-                        <View style={styles.startOverlay}>
-                            <TouchableOpacity
-                                onPress={togglePlay}
-                                style={styles.tuneInButton}
-                            >
-                                <Text style={styles.tuneInText}>Tune In</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
-                    {/* Integrated Live Card */}
-                    <TouchableOpacity
-                        onPress={() => currentTopic && setSelectedTopic(currentTopic)}
-                        style={[styles.liveCard, !hasStarted && { opacity: 0 }]}
-                        disabled={!hasStarted}
-                    >
-                        <View style={styles.liveIndicator}>
-                            <View style={styles.liveDot} />
-                            <Text style={styles.liveText}>LIVE</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.liveContent}>
-                            <ScrollingText
-                                text={currentTopic?.title || "Waiting..."}
-                                className="text-sm font-medium text-stone-900"
-                            />
-                            {currentTopic && (
-                                <Text style={styles.topicSender}>
-                                    {currentTopic.sender || "Anonymous"}
-                                </Text>
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Queue Card */}
-                <Queue
+                {/* Topic List */}
+                <TopicList
                     queue={queue}
+                    currentTopic={currentTopic}
                     onTopicClick={setSelectedTopic}
-                    onPlayTopic={playTopic}
+                    onPlayTopic={(topic) => {
+                        playTopic(topic);
+                        navigateTo("Player");
+                    }}
+                    onQuickPlay={(topic) => {
+                        playTopic(topic);
+                    }}
                 />
             </ScrollView>
+
+            <MiniPlayer />
 
             <TopicModal
                 topic={selectedTopic}
@@ -121,86 +95,14 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        paddingBottom: 100, // Add padding for MiniPlayer
         gap: 30,
         alignItems: "center",
     },
-    visualizerWrapper: {
-        width: "100%",
-        alignItems: "center",
-        position: "relative",
-    },
-    startOverlay: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 200, // Match visualizer height
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 10,
-    },
-    tuneInButton: {
-        backgroundColor: "#1c1917",
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 25,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    tuneInText: {
-        color: "white",
-        fontWeight: "bold",
-        fontSize: 16,
-    },
-    liveCard: {
-        marginTop: 30,
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "rgba(255, 255, 255, 0.6)",
-        padding: 12,
-        borderRadius: 25,
-        borderWidth: 1,
-        borderColor: "#e7e5e4",
-        width: "100%",
-        maxWidth: 350,
-    },
-    liveIndicator: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    liveDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: "#a855f7",
-    },
-    liveText: {
-        fontSize: 10,
-        fontWeight: "bold",
-        color: "#78716c",
-    },
-    divider: {
-        width: 1,
-        height: 16,
-        backgroundColor: "#d6d3d1",
-        marginHorizontal: 12,
-    },
-    liveContent: {
-        flex: 1,
-        overflow: "hidden",
-    },
-    topicTitle: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#1c1917",
-    },
     topicSender: {
-        fontSize: 10,
+        fontSize: 14,
         color: "#78716c",
+        fontWeight: "500",
     },
 
 });

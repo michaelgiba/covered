@@ -9,14 +9,29 @@ LogBox.ignoreLogs(["Expo AV has been deprecated"]);
 
 const queryClient = new QueryClient();
 
+import { NavigationProvider, useNavigation } from "./src/context/NavigationContext";
+import { TopicPlaybackScreen } from "./src/screens/TopicPlaybackScreen";
+
+const AppContent = () => {
+  const { currentScreen } = useNavigation();
+
+  return (
+    <>
+      {currentScreen === "Home" ? <HomeScreen /> : <TopicPlaybackScreen />}
+      <StatusBar style="auto" />
+    </>
+  );
+};
+
 export default function App() {
   return (
     <TamaguiProvider defaultTheme="light">
       <QueryClientProvider client={queryClient}>
-        <AudioProvider>
-          <HomeScreen />
-          <StatusBar style="auto" />
-        </AudioProvider>
+        <NavigationProvider>
+          <AudioProvider>
+            <AppContent />
+          </AudioProvider>
+        </NavigationProvider>
       </QueryClientProvider>
     </TamaguiProvider>
   );

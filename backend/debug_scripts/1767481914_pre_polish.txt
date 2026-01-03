@@ -1,0 +1,3 @@
+Alright, next up we've got an email from michaelgiba@gmail.com. The subject line is Testing cross platofmr and the body simply asks: how do you do it?
+
+Hey Michael. Testing across different platforms usually comes down to using tools like Appium or Selenium so you can run the same tests on iOS and Android. If you don't want to buy twenty different phones, most people just use a service like BrowserStack or Sauce Labs to test on devices in the cloud. It's not the most exciting work, but it gets the job done.

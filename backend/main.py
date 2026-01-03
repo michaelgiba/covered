@@ -135,15 +135,11 @@ async def processing_loop(processing_ids: set):
             # Since we serve /data, the URL should be /data/playback_content/{filename}
             playback_content = PlaybackContent(
                 id=playback_id,
-                m4a_file_url=f"/data/playback_content/{m4a_filename}",
+                m4a_file_url=f"http://192.168.1.23:3000/data/playback_content/{m4a_filename}",
             )
 
-            # Save PlaybackContent JSON
-            with open(json_path, "w") as f:
-                f.write(playback_content.model_dump_json(indent=2))
-
             # Update Topic
-            topic_service.update_topic_playback(topic.id, playback_id)
+            topic_service.update_topic_playback(topic.id, playback_content)
 
             # Cleanup wav
             if os.path.exists(wav_path):

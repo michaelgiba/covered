@@ -1,13 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
-import { Button, Dialog, Text, YStack, XStack, Paragraph } from "tamagui";
-
-interface Topic {
-  id: string;
-  title: string;
-  context: string;
-  sender?: string;
-}
+import { motion, AnimatePresence } from "framer-motion";
+import { Topic } from "@speed-code/shared";
 
 interface TopicModalProps {
   topic: Topic | null;
@@ -15,97 +9,72 @@ interface TopicModalProps {
 }
 
 export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
-  if (!topic) return null;
+  // Cast motion.div to any to avoid type errors with current framer-motion version
+  const MotionDiv = motion.div as any;
 
   return (
-    <Dialog modal open={!!topic} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay
-          key="overlay"
-          animation="quick"
-          opacity={0.5}
-          enterStyle={{ opacity: 0 }}
-          exitStyle={{ opacity: 0 }}
-          backgroundColor="$stone900"
-        />
-        <Dialog.Content
-          bordered
-          elevate
-          key="content"
-          animateOnly={["transform", "opacity"]}
-          animation={[
-            "quick",
-            {
-              opacity: {
-                overshootClamping: true,
-              },
-            },
-          ]}
-          enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
-          exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
-          gap="$4"
-          backgroundColor="$background"
-          borderRadius="$6"
-          padding="$6"
-          maxWidth={500}
-        >
-          <Dialog.Title fontSize="$7" fontWeight="bold" color="$stone900">
-            {topic.title}
-          </Dialog.Title>
+    <AnimatePresence>
+      {topic && (
+        <>
+          {/* Backdrop */}
+          <MotionDiv
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50"
+          />
 
-          {topic.sender && (
-            <XStack
-              gap="$2"
-              alignItems="center"
-              backgroundColor="$stone100"
-              paddingHorizontal="$2"
-              paddingVertical="$1"
-              borderRadius="$2"
-              alignSelf="flex-start"
+          {/* Modal */}
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
+            <MotionDiv
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto border border-white/20 max-h-[85vh] flex flex-col"
             >
-              <Text fontSize="$1" fontWeight="500" color="$stone500">
-                From:
-              </Text>
-              <Text fontSize="$1" fontWeight="500" color="$stone700">
-                {topic.sender}
-              </Text>
-            </XStack>
-          )}
+              {/* Header */}
+              <div className="p-6 pb-4 shrink-0 relative">
+                <button
+                  onClick={onClose}
+                  className="absolute top-4 right-4 p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-400 hover:text-stone-600"
+                >
+                  <X size={18} />
+                </button>
 
-          <YStack
-            backgroundColor="$stone50"
-            borderRadius="$4"
-            padding="$4"
-            borderWidth={1}
-            borderColor="$stone200"
-          >
-            <Paragraph fontSize="$3" color="$stone600" lineHeight="$5">
-              {topic.context}
-            </Paragraph>
-          </YStack>
+                <div className="pr-8">
+                  <h2 className="text-xl font-bold text-stone-900 leading-tight">
+                    {topic.title}
+                  </h2>
+                  {topic.sender && (
+                    <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-stone-100 rounded text-xs font-medium text-stone-600">
+                      <span className="text-stone-400">From:</span>
+                      {topic.sender}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <XStack gap="$3" justifyContent="flex-end">
-            <Dialog.Close asChild>
-              <Button size="$3" chromeless onPress={onClose} theme="alt1">
-                Close
-              </Button>
-            </Dialog.Close>
-          </XStack>
+              {/* Scrollable Content */}
+              <div className="px-6 overflow-y-auto">
+                <div className="bg-stone-50 rounded-xl p-4 border border-stone-100 text-sm text-stone-600 leading-relaxed">
+                  {topic.context}
+                </div>
+              </div>
 
-          <Dialog.Close asChild>
-            <Button
-              position="absolute"
-              top="$4"
-              right="$4"
-              size="$3"
-              circular
-              icon={<X size={16} />}
-              chromeless
-              theme="alt2"
-            />
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog>
+              {/* Footer */}
+              <div className="p-6 pt-4 shrink-0 flex justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-lg hover:bg-stone-800 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </MotionDiv>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 };

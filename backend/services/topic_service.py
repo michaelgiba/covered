@@ -72,17 +72,17 @@ class TopicService:
         """
         with self._file_lock:
             all_topics = self._load_all_topics()
-            return [t for t in all_topics if t.playback_content_id is None]
+            return [t for t in all_topics if t.playback_content is None]
 
-    def update_topic_playback(self, topic_id: str, playback_id: str):
+    def update_topic_playback(self, topic_id: str, playback_content):
         """
-        Updates the topic with the given playback ID.
+        Updates the topic with the given playback content.
         """
         with self._file_lock:
             all_topics = self._load_all_topics()
             for topic in all_topics:
                 if topic.id == topic_id:
-                    topic.playback_content_id = playback_id
+                    topic.playback_content = playback_content
                     break
             self._save_topics(all_topics)
 

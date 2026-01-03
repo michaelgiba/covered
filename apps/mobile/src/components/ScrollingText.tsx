@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing } from "react-native";
-import { styled, View, Text as TamaguiText } from "tamagui";
+import { styled, View } from "tamagui";
 
 interface ScrollingTextProps {
   text: string;
