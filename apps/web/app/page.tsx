@@ -8,7 +8,8 @@ import { Visualizer } from "@/components/Visualizer";
 import { Mail, Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { useAudio } from "@/context/AudioContext";
+import { useAudio } from "@/contexts/AudioContext";
+import { usePlaybackManager } from "@/contexts/PlaybackManagerContext";
 
 export default function Home() {
     const {
@@ -19,16 +20,10 @@ export default function Home() {
         isMuted,
         togglePlay,
         toggleMute,
-        playTopic,
         seekBy,
     } = useAudio();
-
-    const { data: rawTopics } = useTopics(WEB_API_URL);
-
-    // Deduplicate topics
-    const topics = rawTopics?.filter((topic, index, self) =>
-        index === self.findIndex((t) => t.id === topic.id)
-    );
+    const { playTopic, setQueue } = usePlaybackManager();
+    const { data: topics } = useTopics(WEB_API_URL);
 
     const [hasStarted, setHasStarted] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
@@ -37,7 +32,13 @@ export default function Home() {
     useWakeLock(hasStarted);
 
     // Calculate queue
-    const queue = topics?.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || "")) || [];
+    const queue = topics || [];
+
+    useEffect(() => {
+        if (topics) {
+            setQueue(topics);
+        }
+    }, [topics, setQueue]);
 
     const handleTogglePlay = () => {
         if (!hasStarted) {

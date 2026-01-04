@@ -8,9 +8,10 @@ import {
     TouchableOpacity,
 } from "react-native";
 import { Visualizer, ScrollingText } from "../components/";
-import { useAudio } from "../context/AudioContext";
-import { useNavigation } from "../context/NavigationContext";
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, ChevronDown } from "@tamagui/lucide-icons";
+import { useAudio } from "../contexts/AudioContext";
+import { useNavigation } from "../contexts/NavigationContext";
+import { usePlaybackManager } from "../contexts/PlaybackManagerContext";
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, ChevronDown, SkipBack, SkipForward } from "@tamagui/lucide-icons";
 
 export const TopicPlaybackScreen = () => {
     const {
@@ -24,6 +25,7 @@ export const TopicPlaybackScreen = () => {
         player,
     } = useAudio();
     const { navigateTo } = useNavigation();
+    const { playNextTopic, playPrevTopic } = usePlaybackManager();
 
     return (
         <SafeAreaView style={styles.container}>
@@ -36,7 +38,7 @@ export const TopicPlaybackScreen = () => {
                     <ChevronDown size={28} color="#1c1917" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Now Playing</Text>
-                <View style={{ width: 28 }} /> {/* Spacer for balance */}
+                <View style={{ width: 28 }} />
             </View>
 
             <View style={styles.content}>
@@ -58,7 +60,7 @@ export const TopicPlaybackScreen = () => {
                             text={currentTopic?.title || ""}
                             className="text-2xl font-bold text-stone-900 mb-2"
                         />
-                        <Text style={styles.topicSender || ""}>
+                        <Text style={styles.topicSender}>
                             {currentTopic?.sender}
                         </Text>
                     </View>
@@ -66,8 +68,8 @@ export const TopicPlaybackScreen = () => {
                     {/* Controls */}
                     <View style={styles.controlsContainer}>
                         <View style={styles.mainControlsRow}>
-                            <TouchableOpacity onPress={() => seekBy(-15)} style={styles.controlButton}>
-                                <RotateCcw size={32} color="#1c1917" />
+                            <TouchableOpacity onPress={playPrevTopic} style={styles.controlButton}>
+                                <SkipBack size={32} color="#1c1917" />
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={togglePlay} style={styles.playPauseButton}>
@@ -78,18 +80,28 @@ export const TopicPlaybackScreen = () => {
                                 )}
                             </TouchableOpacity>
 
-                            <TouchableOpacity onPress={() => seekBy(30)} style={styles.controlButton}>
-                                <RotateCw size={32} color="#1c1917" />
+                            <TouchableOpacity onPress={playNextTopic} style={styles.controlButton}>
+                                <SkipForward size={32} color="#1c1917" />
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
-                            {isMuted ? (
-                                <VolumeX size={24} color="#78716c" />
-                            ) : (
-                                <Volume2 size={24} color="#78716c" />
-                            )}
-                        </TouchableOpacity>
+                        <View style={styles.secondaryControlsRow}>
+                            <TouchableOpacity onPress={() => seekBy(-15)} style={styles.secondaryControlButton}>
+                                <RotateCcw size={20} color="#78716c" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+                                {isMuted ? (
+                                    <VolumeX size={24} color="#78716c" />
+                                ) : (
+                                    <Volume2 size={24} color="#78716c" />
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={() => seekBy(30)} style={styles.secondaryControlButton}>
+                                <RotateCw size={20} color="#78716c" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </View>
@@ -157,7 +169,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         maxWidth: 300,
     },
+    secondaryControlsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 20,
+    },
     controlButton: {
+        padding: 12,
+    },
+    secondaryControlButton: {
         padding: 12,
     },
     muteButton: {

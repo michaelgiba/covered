@@ -1,7 +1,8 @@
 import React from "react";
-import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react";
 import { ScrollingText } from "./ScrollingText";
 import { Topic } from "@speed-code/shared";
+import { usePlaybackManager } from "@/contexts/PlaybackManagerContext";
 
 interface PlaybackBarProps {
     isPlaying: boolean;
@@ -20,15 +21,17 @@ export const PlaybackBar = ({
     onToggleMute,
     onSeekBy,
 }: PlaybackBarProps) => {
+    const { playNextTopic, playPrevTopic } = usePlaybackManager();
+
     return (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-3xl bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-50">
             {/* Controls (Left) */}
             <div className="flex items-center gap-4 shrink-0">
                 <button
-                    onClick={() => onSeekBy(-15)}
+                    onClick={playPrevTopic}
                     className="p-2 hover:bg-black/5 rounded-full transition-colors text-stone-600 hover:text-stone-900"
                 >
-                    <RotateCcw size={20} />
+                    <SkipBack size={20} />
                 </button>
 
                 <button
@@ -43,10 +46,10 @@ export const PlaybackBar = ({
                 </button>
 
                 <button
-                    onClick={() => onSeekBy(30)}
+                    onClick={playNextTopic}
                     className="p-2 hover:bg-black/5 rounded-full transition-colors text-stone-600 hover:text-stone-900"
                 >
-                    <RotateCw size={20} />
+                    <SkipForward size={20} />
                 </button>
             </div>
 
@@ -61,8 +64,24 @@ export const PlaybackBar = ({
                 </span>
             </div>
 
-            {/* Volume (Right) */}
-            <div className="flex items-center justify-end shrink-0">
+            {/* Volume & Seek (Right) */}
+            <div className="flex items-center justify-end shrink-0 gap-2">
+                <button
+                    onClick={() => onSeekBy(-15)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-stone-500 hover:text-stone-900"
+                >
+                    <RotateCcw size={18} />
+                </button>
+
+                <button
+                    onClick={() => onSeekBy(30)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-stone-500 hover:text-stone-900"
+                >
+                    <RotateCw size={18} />
+                </button>
+
+                <div className="w-px h-6 bg-stone-200 mx-1" />
+
                 <button
                     onClick={onToggleMute}
                     className="p-2 hover:bg-black/5 rounded-full transition-colors text-stone-500 hover:text-stone-900"

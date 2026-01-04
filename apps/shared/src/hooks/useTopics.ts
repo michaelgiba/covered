@@ -6,5 +6,13 @@ export const useTopics = (baseUrl: string) => {
         queryKey: ["topics"],
         queryFn: () => fetchTopics(baseUrl),
         refetchInterval: 1000,
+        select: (data) => {
+            // Deduplicate topics
+            const uniqueTopics = data.filter((topic, index, self) =>
+                index === self.findIndex((t) => t.id === topic.id)
+            );
+            // Sort by timestamp
+            return uniqueTopics.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+        }
     });
 };

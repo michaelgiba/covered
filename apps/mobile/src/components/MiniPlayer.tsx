@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { useAudio } from "../context/AudioContext";
-import { useNavigation } from "../context/NavigationContext";
+import { useAudio } from "../contexts/AudioContext";
+import { useNavigation } from "../contexts/NavigationContext";
 import { Play, Pause } from "@tamagui/lucide-icons";
 import { ScrollingText } from "./ScrollingText";
 
@@ -17,6 +17,7 @@ export const MiniPlayer = () => {
             onPress={() => navigateTo("Player")}
             activeOpacity={0.9}
         >
+            <View style={styles.thumbnailPlaceholder} />
             <View style={styles.infoContainer}>
                 <ScrollingText
                     text={currentTopic.title}
@@ -49,7 +50,8 @@ const styles = StyleSheet.create({
         right: 20,
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderRadius: 16,
-        padding: 12,
+        padding: 0,
+        height: 64,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
@@ -60,6 +62,7 @@ const styles = StyleSheet.create({
         elevation: 5,
         borderWidth: 1,
         borderColor: "rgba(0,0,0,0.05)",
+        overflow: "hidden",
     },
     infoContainer: {
         flex: 1,
@@ -78,5 +81,13 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.05)",
         alignItems: "center",
         justifyContent: "center",
+        marginRight: 12,
+    },
+    thumbnailPlaceholder: {
+        width: 64,
+        height: 64,
+        borderRadius: 0,
+        backgroundColor: "#e7e5e4",
+        marginRight: 12,
     },
 });

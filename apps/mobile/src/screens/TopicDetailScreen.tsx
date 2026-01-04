@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
 import { ChevronLeft } from "@tamagui/lucide-icons";
-import { useNavigation } from "../context/NavigationContext";
+import { useNavigation } from "../contexts/NavigationContext";
 import { Topic, formatTime } from "@speed-code/shared";
 
 export const TopicDetailScreen = () => {

@@ -4,7 +4,7 @@ import Svg, { Rect, Defs, LinearGradient, Stop } from "react-native-svg";
 import { Volume2, VolumeX } from "@tamagui/lucide-icons";
 import { YStack, styled, useTheme } from "tamagui";
 import { AudioPlayer, useAudioSampleListener } from "expo-audio";
-import { calculateFFT } from "../utils/audioUtils";
+import { calculateMagnitudes } from "../utils/audioUtils";
 
 interface VisualizerProps {
   isPlaying: boolean;
@@ -40,6 +40,7 @@ export const Visualizer = ({
 }: VisualizerProps) => {
   const theme = useTheme();
   const barCount = 5;
+
   // Animated values range from 0 to 1
   const animatedValues = useRef(
     Array(barCount)
@@ -47,34 +48,108 @@ export const Visualizer = ({
       .map(() => new Animated.Value(0))
   ).current;
 
-  // Use real audio data if available
+  const prevValues = useRef<number[]>(new Array(barCount).fill(0));
+  const targetValues = useRef<number[]>(new Array(barCount).fill(0));
+  const timeRef = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // Idle Animation Loop
+  // Animation Loop (Runs for both Idle and Playing states)
+  useEffect(() => {
+    const animate = () => {
+      timeRef.current += 0.05;
+
+      animatedValues.forEach((anim, i) => {
+        let targetValue = 0;
+
+        if (isPlaying) {
+          // If playing, use the latest audio data
+          targetValue = targetValues.current[i];
+        } else {
+          // Idle animation: symmetric wave from center
+          const mid = Math.floor(barCount / 2);
+          const dist = Math.abs(i - mid);
+          targetValue = 20 + Math.sin(timeRef.current - dist * 0.5) * 10;
+        }
+
+        // Smoothing
+        const isAttack = targetValue > prevValues.current[i];
+        const smoothingFactor = isAttack ? 0.9 : 0.15;
+
+        const smoothedValue =
+          prevValues.current[i] +
+          (targetValue - prevValues.current[i]) * smoothingFactor;
+        prevValues.current[i] = smoothedValue;
+
+        // Normalize and Boost (matching web)
+        let normalized = smoothedValue / 512;
+        normalized = Math.pow(normalized, 2);
+        const boosted = Math.min(1, normalized * 2.5);
+
+        anim.setValue(boosted);
+      });
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPlaying, barCount]);
+
+  // Audio Data Listener
   useAudioSampleListener(player!, (sample) => {
-    if (!isPlaying || isMuted) return;
+    if (!isPlaying) return;
 
     // sample.channels[0].frames is an array of numbers between -1 and 1
     const frames = sample.channels[0].frames;
-    const chunkSize = Math.floor(frames.length / barCount);
 
-    animatedValues.forEach((anim, i) => {
-      // Calculate RMS for this chunk
-      let sum = 0;
-      for (let j = 0; j < chunkSize; j++) {
-        const val = frames[i * chunkSize + j] || 0;
-        sum += val * val;
+    // Use a subset of frames for FFT to match the frequency resolution/bins we want
+    // Web uses 2048 FFT size (default). We want to match the low frequency bins.
+    // We'll use a window of 1024 samples (as requested) but scale indices to match Web's 2048 FFT bins.
+    const windowSize = 1024;
+    const WEB_FFT_SIZE = 2048;
+
+    // Pad with zeros if we don't have enough frames, or just use what we have?
+    // calculateMagnitudes uses input.length as N. If we want specific resolution, we should enforce N.
+    // But calculateMagnitudes logic `angle = ... / n` depends on N.
+    // If we want 21Hz resolution, N must be 2048 (assuming 44.1kHz).
+    // So we should pad if needed.
+    let input = frames;
+    if (frames.length > windowSize) {
+      input = frames.slice(0, windowSize);
+    } else if (frames.length < windowSize) {
+      // Pad with zeros
+      input = [...frames, ...new Array(windowSize - frames.length).fill(0)];
+    }
+
+    // Calculate magnitudes for specific bins to match Web's "dist * 2" logic
+    // Web indices: 0, 2, 4, 3, 5 (sorted: 0, 2, 3, 4, 5)
+    // We scale these indices by (windowSize / WEB_FFT_SIZE) to target the same frequencies.
+    const scale = windowSize / WEB_FFT_SIZE;
+    const indicesToCalculate = [0, 1, 2, 3, 4, 5].map(i => i * scale);
+    const magnitudes = calculateMagnitudes(input, indicesToCalculate); // Returns 0-255
+
+    // Update target values for the animation loop to pick up
+    for (let i = 0; i < barCount; i++) {
+      const mid = Math.floor(barCount / 2);
+      const dist = Math.abs(i - mid);
+
+      // Match Web's index logic
+      let dataIndex = dist * 2;
+      if (i > mid) {
+        dataIndex += 1;
       }
-      const rms = Math.sqrt(sum / chunkSize);
+      // Clamp to available magnitudes
+      dataIndex = Math.min(dataIndex, magnitudes.length - 1);
 
-      // Boost the signal a bit and clamp
-      const targetValue = Math.min(Math.max(rms * 5, 0.1), 1);
-
-      Animated.timing(anim, {
-        toValue: targetValue,
-        duration: 20, // Fast update for responsiveness
-        useNativeDriver: false,
-      }).start();
-    });
+      targetValues.current[i] = magnitudes[dataIndex] || 0;
+    }
   });
-
 
   // Dimensions matching web logic
   // viewBox 0 0 400 200
@@ -115,6 +190,8 @@ export const Visualizer = ({
               height={height}
               rx={barWidth / 2}
               fill={isMuted ? (theme.stone4?.get() || "#e7e5e4") : "url(#grad)"}
+              // @ts-ignore
+              collapsable={undefined}
             />
           );
         })}

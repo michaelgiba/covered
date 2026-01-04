@@ -16,6 +16,7 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const gainNodeRef = useRef<GainNode | null>(null);
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
     const isInitialized = useRef(false);
+    const onPlaybackFinishedRef = useRef<(() => void) | null>(null);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -94,6 +95,9 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
 
         audio.addEventListener('ended', () => {
             setIsPlaying(false);
+            if (onPlaybackFinishedRef.current) {
+                onPlaybackFinishedRef.current();
+            }
         });
 
     }, [isMuted, setupMediaSession]);
@@ -113,13 +117,18 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
             if (audioContextRef.current?.state === "suspended") {
                 audioContextRef.current.resume();
             }
-            audioElementRef.current.play().catch(e => console.log("Play failed:", e));
+            const playPromise = audioElementRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.log("Play failed:", e);
+                });
+            }
         } else {
             audioElementRef.current.pause();
         }
-    }, [isPlaying]);
+    }, [isPlaying, currentTopic]);
 
-    const playTopic = useCallback((topic: Topic) => {
+    const startPlayingAudioForTopic = useCallback((topic: Topic) => {
         if (!isInitialized.current) initAudio();
 
         if (topic.id === currentTopic?.id) {
@@ -130,11 +139,10 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
         if (topic && topic.playback_content && audioElementRef.current) {
             const m4aUrl = topic.playback_content.m4a_file_url;
             audioElementRef.current.src = m4aUrl;
-            audioElementRef.current.play().then(() => {
-                setCurrentTopic(topic);
-                setIsPlaying(true);
-                setupMediaSession(topic);
-            }).catch(e => console.error("Failed to play topic:", e));
+
+            setCurrentTopic(topic);
+            setIsPlaying(true);
+            setupMediaSession(topic);
         }
     }, [currentTopic, isPlaying, initAudio, setupMediaSession]);
 
@@ -154,13 +162,16 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
         duration,
         togglePlay,
         toggleMute,
-        playTopic,
+        startPlayingAudioForTopic,
         currentTopic,
         initAudio,
         seekBy: (seconds: number) => {
             if (audioElementRef.current) {
                 audioElementRef.current.currentTime += seconds;
             }
+        },
+        setOnPlaybackFinished: (callback: () => void) => {
+            onPlaybackFinishedRef.current = callback;
         },
         analyser // Expose analyser for internal use, even if not in shared type
     };

@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { Topic, formatTime } from "@speed-code/shared";
 import { Mail, PlayCircle, Info } from "@tamagui/lucide-icons";
+import { usePlaybackManager } from "../contexts/PlaybackManagerContext";
 
 interface TopicListProps {
     queue: Topic[];
@@ -19,6 +20,8 @@ interface TopicListProps {
 
 export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQuickPlay, onInfoClick }: TopicListProps) => {
     const displayQueue = queue;
+
+    const { isPlayed } = usePlaybackManager();
 
     const handleItemClick = (topic: Topic) => {
         if (topic.playback_content) {
@@ -45,6 +48,8 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                 {displayQueue.map((topic, index) => {
                     const isReady = !!topic.playback_content;
                     const isPlaying = topic.id === currentTopic?.id;
+                    const played = isPlayed(topic);
+                    const isUnplayed = !played && !isPlaying;
 
                     return (
                         <TouchableOpacity
@@ -69,15 +74,20 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                                 )}
                             </TouchableOpacity>
                             <View style={styles.queueContent}>
-                                <Text
-                                    style={[
-                                        styles.queueItemTitle,
-                                        isPlaying && styles.playingQueueItemText
-                                    ]}
-                                    numberOfLines={1}
-                                >
-                                    {topic.title}
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text
+                                        style={[
+                                            styles.queueItemTitle,
+                                            isPlaying && styles.playingQueueItemText
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {topic.title}
+                                    </Text>
+                                    {isUnplayed && isReady && (
+                                        <View style={styles.unplayedDot} />
+                                    )}
+                                </View>
                                 <Text style={styles.queueItemSender}>
                                     {formatTime(topic.timestamp)}
                                 </Text>
@@ -218,5 +228,11 @@ const styles = StyleSheet.create({
         fontSize: 8,
         color: "white",
         fontWeight: "bold",
+    },
+    unplayedDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: "#3b82f6", // blue-500
     }
 });

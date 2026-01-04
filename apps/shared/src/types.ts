@@ -19,8 +19,20 @@ export interface AudioContextType {
   duration: number;
   togglePlay: () => void;
   toggleMute: () => void;
-  playTopic: (topic: Topic) => void;
+  startPlayingAudioForTopic: (topic: Topic) => void;
   currentTopic: Topic | null;
   seekBy: (seconds: number) => void;
   initAudio?: () => void;
+  setOnPlaybackFinished?: (callback: () => void) => void;
+}
+
+export interface PlaybackManager {
+  playNextTopic: () => Topic | null;
+  playPrevTopic: () => Topic | null;
+  playedTopics: Topic[];
+  playbackQueue: Topic[];
+  setQueue: (topics: Topic[]) => void;
+
+  isPlayed: (topic: Topic) => boolean;
+  playTopic: (topic: Topic) => void;
 }

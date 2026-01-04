@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     ScrollView,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Topic, useTopics, MOBILE_API_URL } from "@speed-code/shared";
 import { Visualizer } from "../components/Visualizer";
 import { TopicModal } from "../components/TopicModal";
@@ -15,25 +15,27 @@ import { Logo } from "../components/Logo";
 import { ScrollingText } from "../components/ScrollingText";
 import { TopicList } from "../components/TopicList";
 import { MiniPlayer } from "../components/MiniPlayer";
-import { useAudio } from "../context/AudioContext";
-import { useNavigation } from "../context/NavigationContext";
+import { useAudio } from "../contexts/AudioContext";
+import { useNavigation } from "../contexts/NavigationContext";
+import { usePlaybackManager } from "../contexts/PlaybackManagerContext";
 
 export const HomeScreen = () => {
     const {
-        playTopic,
         currentTopic,
     } = useAudio();
+    const { playTopic, setQueue } = usePlaybackManager();
     const { navigateTo } = useNavigation();
 
-    const { data: rawTopics } = useTopics(MOBILE_API_URL);
-
-    // Deduplicate topics
-    const topics = rawTopics?.filter((topic, index, self) =>
-        index === self.findIndex((t) => t.id === topic.id)
-    );
+    const { data: topics } = useTopics(MOBILE_API_URL);
 
     // Calculate queue
-    const queue = topics?.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || "")) || [];
+    const queue = topics || [];
+
+    useEffect(() => {
+        if (topics) {
+            setQueue(topics);
+        }
+    }, [topics, setQueue]);
 
     const hasStarted = !!currentTopic;
 

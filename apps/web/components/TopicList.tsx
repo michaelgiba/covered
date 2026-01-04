@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Info } from "lucide-react";
 import { Topic, formatTime } from "@speed-code/shared";
+import { usePlaybackManager } from "@/contexts/PlaybackManagerContext";
 
 interface TopicListProps {
     queue: Topic[];
@@ -13,6 +14,7 @@ interface TopicListProps {
 
 export const TopicList = ({ queue, currentTopic, hasStarted, onTopicClick, onInfoClick }: TopicListProps) => {
     const displayQueue = queue;
+    const { isPlayed } = usePlaybackManager();
 
     return (
         <div className={`w-full transition-all duration-500 ${!hasStarted ? 'opacity-50 blur-sm' : 'opacity-100'}`}>
@@ -28,6 +30,8 @@ export const TopicList = ({ queue, currentTopic, hasStarted, onTopicClick, onInf
                         {displayQueue.map((topic, index) => {
                             const isReady = !!topic.playback_content;
                             const isPlaying = topic.id === currentTopic?.id;
+                            const played = isPlayed(topic);
+                            const isUnplayed = !played && !isPlaying;
 
                             return (
                                 // @ts-expect-error framer-motion types
@@ -50,9 +54,14 @@ export const TopicList = ({ queue, currentTopic, hasStarted, onTopicClick, onInf
                                             <Mail size={16} />
                                         </div>
                                         <div className="flex flex-col overflow-hidden">
-                                            <span className={`text-sm font-medium truncate transition-colors ${isPlaying ? 'text-purple-900' : 'text-stone-700 group-hover:text-purple-700'}`}>
-                                                {topic.title}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-sm font-medium truncate transition-colors ${isPlaying ? 'text-purple-900' : 'text-stone-700 group-hover:text-purple-700'}`}>
+                                                    {topic.title}
+                                                </span>
+                                                {isUnplayed && isReady && (
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                                                )}
+                                            </div>
                                             <span className="text-[10px] text-stone-400 truncate">
                                                 {formatTime(topic.timestamp)}
                                             </span>

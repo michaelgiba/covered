@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { AudioContextType, Topic } from "@speed-code/shared";
 
@@ -14,7 +14,7 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
 
     const player = useAudioPlayer(streamUrl, {
         updateInterval: 1000,
-        downloadFirst: true,
+        // downloadFirst: true, // Removing this to allow streaming immediately
     });
 
     // Auto-play when streamUrl changes to a valid URL
@@ -34,10 +34,29 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
     }, [player, isMuted]);
 
     const status = useAudioPlayerStatus(player);
+    const onPlaybackFinishedRef = useRef<(() => void) | null>(null);
 
     const isPlaying = status.playing;
     const currentTime = status.currentTime;
     const duration = status.duration;
+
+    useEffect(() => {
+        // Only trigger finish if we have a valid duration and we are actually at the end
+        // checking duration > 0 prevents firing on initial load
+        const isFinished = status.didJustFinish ||
+            status.playbackState === "finished" ||
+            (status.duration > 0 && status.currentTime >= status.duration);
+
+        if (isFinished) {
+            if (onPlaybackFinishedRef.current) {
+                onPlaybackFinishedRef.current();
+            }
+        }
+    }, [status]);
+
+    const setOnPlaybackFinished = (callback: () => void) => {
+        onPlaybackFinishedRef.current = callback;
+    };
 
     const togglePlay = () => {
         if (isPlaying) {
@@ -51,13 +70,12 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         setIsMuted(!isMuted);
     };
 
-    const playTopic = (topic: Topic) => {
+    const startPlayingAudioForTopic = (topic: Topic) => {
         if (topic.id === currentTopic?.id) {
-            togglePlay();
             return;
         } else {
             setCurrentTopic(topic);
-            player?.play();
+            // player.play() is handled by the useEffect when streamUrl changes
         }
     };
 
@@ -68,13 +86,14 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         duration,
         togglePlay,
         toggleMute,
-        playTopic,
+        startPlayingAudioForTopic,
         currentTopic,
         seekBy: (seconds: number) => {
             if (player) {
                 player.seekTo(player.currentTime + seconds);
             }
         },
+        setOnPlaybackFinished,
         player, // Expose player for visualizer
     };
 
