@@ -21,7 +21,6 @@ export const TopicPlaybackScreen = () => {
         toggleMute,
         currentTopic,
         seekBy,
-        // @ts-expect-error player is not in shared type
         player,
     } = useAudio();
     const { navigateTo } = useNavigation();
@@ -50,6 +49,9 @@ export const TopicPlaybackScreen = () => {
                         <TranscriptCard
                             topic={currentTopic}
                             onPress={() => setShowTranscript(false)}
+                            isPlaying={isPlaying}
+                            isMuted={isMuted}
+                            player={player}
                         />
                     ) : (
                         <TouchableOpacity

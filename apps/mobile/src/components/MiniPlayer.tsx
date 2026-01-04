@@ -4,9 +4,10 @@ import { useAudio } from "../contexts/AudioContext";
 import { useNavigation } from "../contexts/NavigationContext";
 import { Play, Pause } from "@tamagui/lucide-icons";
 import { ScrollingText } from "./ScrollingText";
+import { MiniVisualizer } from "./MiniVisualizer";
 
 export const MiniPlayer = () => {
-    const { currentTopic, isPlaying, togglePlay } = useAudio();
+    const { currentTopic, isPlaying, isMuted, togglePlay, player } = useAudio();
     const { navigateTo } = useNavigation();
 
     if (!currentTopic) return null;
@@ -17,7 +18,12 @@ export const MiniPlayer = () => {
             onPress={() => navigateTo("Player")}
             activeOpacity={0.9}
         >
-            <View style={styles.thumbnailPlaceholder} />
+            <MiniVisualizer
+                isPlaying={isPlaying}
+                isMuted={isMuted}
+                player={player}
+                size={64}
+            />
             <View style={styles.infoContainer}>
                 <ScrollingText
                     text={currentTopic.title}
@@ -81,13 +87,6 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.05)",
         alignItems: "center",
         justifyContent: "center",
-        marginRight: 12,
-    },
-    thumbnailPlaceholder: {
-        width: 64,
-        height: 64,
-        borderRadius: 0,
-        backgroundColor: "#e7e5e4",
         marginRight: 12,
     },
 });

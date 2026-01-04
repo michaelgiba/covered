@@ -6,3 +6,4 @@ export * from './TopicList';
 export * from './MiniPlayer';
 export * from './TranscriptCard';
 export * from './PlaybackControls';
+export * from './MiniVisualizer';

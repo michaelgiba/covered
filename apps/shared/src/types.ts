@@ -24,6 +24,7 @@ export interface AudioContextType {
   seekBy: (seconds: number) => void;
   initAudio?: () => void;
   setOnPlaybackFinished?: (callback: () => void) => void;
+  player?: any; // Platform-specific audio player for visualizers
 }
 
 export interface PlaybackManager {
