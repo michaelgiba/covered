@@ -63,6 +63,9 @@ export const HomeScreen = () => {
                     onQuickPlay={(topic) => {
                         playTopic(topic);
                     }}
+                    onInfoClick={(topic) => {
+                        navigateTo("TopicDetail", { topic });
+                    }}
                 />
             </ScrollView>
 

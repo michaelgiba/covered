@@ -75,10 +75,11 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
                 player.seekTo(player.currentTime + seconds);
             }
         },
+        player, // Expose player for visualizer
     };
 
     return (
-        <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
+        <AudioContext.Provider value={value as any}>{children}</AudioContext.Provider>
     );
 };
 

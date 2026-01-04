@@ -14,9 +14,10 @@ interface TopicListProps {
     onTopicClick: (topic: Topic) => void;
     onPlayTopic: (topic: Topic) => void;
     onQuickPlay: (topic: Topic) => void;
+    onInfoClick: (topic: Topic) => void;
 }
 
-export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQuickPlay }: TopicListProps) => {
+export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQuickPlay, onInfoClick }: TopicListProps) => {
     const displayQueue = queue;
 
     const handleItemClick = (topic: Topic) => {
@@ -93,7 +94,9 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                                         <Text style={styles.playingText}>Playing</Text>
                                     </View>
                                 )}
-                                <Info size={16} color="#a8a29e" />
+                                <TouchableOpacity onPress={() => onInfoClick(topic)}>
+                                    <Info size={16} color="#a8a29e" />
+                                </TouchableOpacity>
                             </View>
                         </TouchableOpacity>
                     );
