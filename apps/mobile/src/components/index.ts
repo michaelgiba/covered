@@ -4,4 +4,5 @@ export * from "./TopicModal";
 export * from "./Visualizer";
 export * from './TopicList';
 export * from './MiniPlayer';
-
+export * from './TranscriptCard';
+export * from './PlaybackControls';

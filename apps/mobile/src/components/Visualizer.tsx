@@ -15,12 +15,12 @@ interface VisualizerProps {
 
 const VisualizerContainer = styled(YStack, {
   position: "relative",
-  pressStyle: { opacity: 0.8 },
   width: "100%",
   maxWidth: 400,
   aspectRatio: 2, // 400/200 = 2
   alignItems: "center",
   justifyContent: "center",
+  pointerEvents: "none",
 });
 
 const IconWrapper = styled(YStack, {
@@ -159,7 +159,7 @@ export const Visualizer = ({
   const barWidth = (totalWidth - spacing * (barCount - 1)) / barCount; // ~76
 
   return (
-    <VisualizerContainer onPress={onToggleMute}>
+    <VisualizerContainer>
       <Svg width="100%" height="100%" viewBox={`0 0 ${totalWidth} ${totalHeight}`}>
         <Defs>
           <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
