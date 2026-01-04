@@ -11,8 +11,8 @@ export const useTopics = (baseUrl: string) => {
             const uniqueTopics = data.filter((topic, index, self) =>
                 index === self.findIndex((t) => t.id === topic.id)
             );
-            // Sort by timestamp
-            return uniqueTopics.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+            // Sort by timestamp (newest first - reverse chronological)
+            return uniqueTopics.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
         }
     });
 };
