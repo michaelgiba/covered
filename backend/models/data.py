@@ -30,3 +30,7 @@ class TopicList(BaseModel):
 
 class ScriptOutput(BaseModel):
     script: str
+
+
+class UrlExtraction(BaseModel):
+    urls: List[str]
