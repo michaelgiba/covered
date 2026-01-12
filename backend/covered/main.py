@@ -15,11 +15,11 @@ async def run_loop(target_duration: int | None):
     start_time = time.time()
     
     # Shared state
-    processing_ids = set()
+    # processing_ids removed as per refactor
 
     # Create tasks
     curation_task = asyncio.create_task(curation_loop())
-    processing_task = asyncio.create_task(processing_loop(processing_ids))
+    processing_task = asyncio.create_task(processing_loop())
     
     # Start Server
     server_runner = await start_server()

@@ -11,6 +11,8 @@ class Email(BaseModel):
 
 
 class ProcessedInput(BaseModel):
+    id: str
+    timestamp: str
     title: str
     content: str
     extracted_link: Optional[str] = None
@@ -19,6 +21,7 @@ class ProcessedInput(BaseModel):
 
 class PlaybackContent(BaseModel):
     id: str  # generated uuid
+    processed_input_id: str
     page_snapshot_url: str
     script_json_url: str
     m4a_file_url: str

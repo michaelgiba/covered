@@ -1,11 +1,14 @@
 export interface PlaybackContent {
   id: string;
+  processed_input_id: string;
   page_snapshot_url: string;
   script_json_url: string;
   m4a_file_url: string;
 }
 
 export interface ProcessedInput {
+  id: string;
+  timestamp: string;
   title: string;
   content: string;
   extracted_link?: string;

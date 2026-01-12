@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from typing import Dict, Tuple
 
-from covered.config import PLAYBACK_DIR
+from covered.config import MEDIA_DIR
 from covered.utils.audio import convert_to_m4a
 from covered.utils.tts import TTSService
 
@@ -23,7 +23,8 @@ def temporary_wav_file(suffix: str):
 async def generate_audio_and_transcript(tts_service: TTSService, script_text: str, topic_id: str) -> Tuple[str, Dict, str]:
     playback_id = str(uuid.uuid4())
     m4a_filename = f"{playback_id}.m4a"
-    m4a_path = os.path.join(PLAYBACK_DIR, m4a_filename)
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    m4a_path = os.path.join(MEDIA_DIR, m4a_filename)
     
     with temporary_wav_file(suffix=f"_{topic_id}.wav") as wav_path:
         await asyncio.to_thread(tts_service.generate_audio, script_text, wav_path)

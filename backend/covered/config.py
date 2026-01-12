@@ -4,7 +4,8 @@ import logging
 # Base Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
-PLAYBACK_DIR = os.path.join(DATA_DIR, "playback_content")
+PLAYBACK_DIR = os.path.join(DATA_DIR, "playback-content")
+MEDIA_DIR = os.path.join(PLAYBACK_DIR, "media")
 
 # Server Configuration
 SERVER_HOST = "0.0.0.0"

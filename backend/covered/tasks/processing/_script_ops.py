@@ -7,9 +7,6 @@ from covered.utils.llm import LLMService
 from covered.models.data import ScriptOutput
 from covered.config import BASE_DIR
 
-DEBUG_DIR = os.path.join(BASE_DIR, "debug_scripts")
-os.makedirs(DEBUG_DIR, exist_ok=True)
-
 @cache
 def _get_llm_service():
     return LLMService()
