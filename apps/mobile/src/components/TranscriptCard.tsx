@@ -33,7 +33,7 @@ export const TranscriptCard = ({
         >
             <View style={styles.header}>
                 <View style={styles.titleContainer}>
-                    <Text style={styles.title}>{topic?.title}</Text>
+                    <Text style={styles.title}>{topic?.processed_input.title}</Text>
                     <Text style={styles.timestamp}>{topic?.timestamp}</Text>
                 </View>
                 <View style={styles.visualizerWrapper}>
@@ -47,7 +47,7 @@ export const TranscriptCard = ({
             </View>
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 <Text style={styles.content}>
-                    {topic?.context || "No transcript available."}
+                    {topic?.processed_input.content || "No transcript available."}
                 </Text>
             </ScrollView>
         </TouchableOpacity>

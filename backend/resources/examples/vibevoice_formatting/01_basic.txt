@@ -1,4 +1,0 @@
---- INPUT ---
-Host: Welcome back! Today we're talking tech.
---- OUTPUT ---
-Welcome back! Today we're talking tech.

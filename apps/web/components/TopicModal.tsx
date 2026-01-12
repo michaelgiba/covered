@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Topic } from "@speed-code/shared";
+import { Topic, PlaybackContent } from "@speed-code/shared";
 
 interface TopicModalProps {
   topic: Topic | null;
@@ -11,6 +11,28 @@ interface TopicModalProps {
 export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
   // Cast motion.div to any to avoid type errors with current framer-motion version
   const MotionDiv = motion.div as any;
+  const [scriptText, setScriptText] = useState<string | null>(null);
+  const [isLoadingScript, setIsLoadingScript] = useState(false);
+
+  useEffect(() => {
+    if (topic?.playback_content?.script_json_url) {
+      setIsLoadingScript(true);
+      fetch(topic.playback_content.script_json_url)
+        .then((res) => res.json())
+        .then((data) => {
+          setScriptText(data.text);
+        })
+        .catch((err) => {
+          console.error("Failed to load script", err);
+          setScriptText("Failed to load script.");
+        })
+        .finally(() => {
+          setIsLoadingScript(false);
+        });
+    } else {
+      setScriptText(null);
+    }
+  }, [topic?.playback_content?.script_json_url]);
 
   return (
     <AnimatePresence>
@@ -44,12 +66,12 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
 
                 <div className="pr-8">
                   <h2 className="text-xl font-bold text-stone-900 leading-tight">
-                    {topic.title}
+                    {topic.processed_input.title}
                   </h2>
-                  {topic.sender && (
+                  {topic.processed_input.sender && (
                     <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-stone-100 rounded text-xs font-medium text-stone-600">
                       <span className="text-stone-400">From:</span>
-                      {topic.sender}
+                      {topic.processed_input.sender}
                     </div>
                   )}
                 </div>
@@ -57,8 +79,44 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
 
               {/* Scrollable Content */}
               <div className="px-6 overflow-y-auto">
-                <div className="bg-stone-50 rounded-xl p-4 border border-stone-100 text-sm text-stone-600 leading-relaxed">
-                  {topic.context}
+                <div className="space-y-4 pb-6">
+                  {topic.playback_content?.page_snapshot_url && (
+                    <div className="rounded-xl overflow-hidden border border-stone-200">
+                      <img
+                        src={topic.playback_content.page_snapshot_url}
+                        alt="Page Snapshot"
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <div className="bg-stone-50 rounded-xl p-4 border border-stone-100 text-sm text-stone-600 leading-relaxed">
+                    {topic.processed_input.content}
+                  </div>
+
+                  {topic.processed_input.extracted_link && (
+                    <div>
+                      <a
+                        href={topic.processed_input.extracted_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        View Source Link
+                      </a>
+                    </div>
+                  )}
+
+                  {(scriptText || isLoadingScript) && (
+                    <div className="bg-stone-100 p-4 rounded-xl border border-stone-200">
+                      <h3 className="text-sm font-semibold mb-2 text-stone-700">Generated Script</h3>
+                      {isLoadingScript ? (
+                        <p className="text-xs text-stone-400 animate-pulse">Loading script...</p>
+                      ) : (
+                        <p className="whitespace-pre-wrap font-mono text-xs text-stone-500">{scriptText}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

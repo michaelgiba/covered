@@ -10,18 +10,25 @@ class Email(BaseModel):
     timestamp: str
 
 
-class Topic(BaseModel):
-    id: str
+class ProcessedInput(BaseModel):
     title: str
-    context: str
+    content: str
+    extracted_link: Optional[str] = None
     sender: Optional[str] = None
-    timestamp: str  # Changed to required
-    playback_content: Optional["PlaybackContent"] = None
 
 
 class PlaybackContent(BaseModel):
-    id: str
+    id: str  # generated uuid
+    page_snapshot_url: str
+    script_json_url: str
     m4a_file_url: str
+
+
+class Topic(BaseModel):
+    id: str
+    timestamp: str
+    processed_input: ProcessedInput
+    playback_content: Optional[PlaybackContent] = None
 
 
 class TopicList(BaseModel):

@@ -26,11 +26,11 @@ export const MiniPlayer = () => {
             />
             <View style={styles.infoContainer}>
                 <ScrollingText
-                    text={currentTopic.title}
+                    text={currentTopic.processed_input.title}
                     className="text-sm font-bold text-stone-900"
                 />
                 <Text style={styles.senderText} numberOfLines={1}>
-                    {currentTopic.sender || "Speed Code"}
+                    {currentTopic.processed_input.sender || "Speed Code"}
                 </Text>
             </View>
 

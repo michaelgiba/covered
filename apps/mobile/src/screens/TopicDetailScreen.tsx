@@ -34,13 +34,13 @@ export const TopicDetailScreen = () => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                <Text style={styles.title}>{topic.title}</Text>
+                <Text style={styles.title}>{topic.processed_input.title}</Text>
 
                 <View style={styles.metaContainer}>
-                    {topic.sender && (
+                    {topic.processed_input.sender && (
                         <View style={styles.metaItem}>
                             <Text style={styles.metaLabel}>From:</Text>
-                            <Text style={styles.metaValue}>{topic.sender}</Text>
+                            <Text style={styles.metaValue}>{topic.processed_input.sender}</Text>
                         </View>
                     )}
                     <View style={styles.metaItem}>
@@ -50,7 +50,7 @@ export const TopicDetailScreen = () => {
                 </View>
 
                 <View style={styles.contextContainer}>
-                    <Text style={styles.contextText}>{topic.context}</Text>
+                    <Text style={styles.contextText}>{topic.processed_input.content}</Text>
                 </View>
             </ScrollView>
         </SafeAreaView>

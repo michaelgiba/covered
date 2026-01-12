@@ -68,11 +68,11 @@ export const TopicPlaybackScreen = () => {
                             {/* Metadata */}
                             <View style={styles.metadataContainer}>
                                 <ScrollingText
-                                    text={currentTopic?.title || ""}
+                                    text={currentTopic?.processed_input.title || ""}
                                     className="text-2xl font-bold text-stone-900 mb-2"
                                 />
                                 <Text style={styles.topicSender}>
-                                    {currentTopic?.sender}
+                                    {currentTopic?.processed_input.sender}
                                 </Text>
                             </View>
                         </TouchableOpacity>

@@ -82,7 +82,7 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                                         ]}
                                         numberOfLines={1}
                                     >
-                                        {topic.title}
+                                        {topic.processed_input.title}
                                     </Text>
                                     {isUnplayed && isReady && (
                                         <View style={styles.unplayedDot} />

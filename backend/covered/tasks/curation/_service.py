@@ -1,21 +1,17 @@
 import os
 import json
 import threading
-from typing import List, Set, Optional
-from models.data import Topic
-from services.email import EmailService
-
+from typing import List, Optional
+from covered.models.data import Topic, ProcessedInput
+from covered.utils.llm import LLMService
+from covered.config import DATA_DIR
+from ._email import EmailService
 
 class TopicService:
     _file_lock = threading.Lock()
 
     def __init__(self):
-        # Determine absolute paths
-        # This file is in backend/services/
-        self.base_dir = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )  # backend/
-        self.data_dir = os.path.abspath(os.path.join(self.base_dir, "../data"))
+        self.data_dir = DATA_DIR
         self.state_dir = os.path.join(self.data_dir, "topic_service_state")
 
         self.topics_path = os.path.join(self.data_dir, "topics.json")
@@ -37,9 +33,6 @@ class TopicService:
                 valid_topics = []
                 for t in topics_data:
                     try:
-                        # Handle migration: if timestamp is missing, use current time or skip?
-                        # If status is present, it's ignored.
-                        # If timestamp is missing, Pydantic raises error.
                         valid_topics.append(Topic(**t))
                     except Exception:
                         continue
@@ -91,8 +84,6 @@ class TopicService:
         Fetches emails using EmailService, filters by cursor, converts to Topics, and saves.
         Returns the list of newly created topics.
         """
-        # Note: Email fetching is network bound and doesn't need the lock.
-        # We only lock when we are reading/writing our local state.
         email_service = EmailService()
         emails = email_service.download_emails()
 
@@ -108,14 +99,58 @@ class TopicService:
                 # If we have a cursor, skip emails older or equal to it
                 if cursor and email.timestamp <= cursor:
                     continue
+                
+                # Determine sender
+                sender_display = email.sender if email.sender else "Anonymous"
+
+                # LLM Extraction
+                llm_service = LLMService()
+                
+                # Define Local Alias
+                PInput = ProcessedInput
+
+                prompt = f"""
+                Analyze the following email content.
+                1. Generate a concise, catchy title for this topic (max 10 words).
+                2. Extract the primary URL link if present. If multiple, choose the most relevant one.
+                3. Format the content into a clean string suitable for reading.
+                
+                Email Subject: {email.subject}
+                Email Body: {email.body}
+                Email Sender: {email.sender}
+                """
+                
+                try:
+                    processed_data = llm_service.prompt_without_search(prompt, PInput)
+                    
+                    if not processed_data:
+                         # Fallback if LLM fails
+                        processed_data = PInput(
+                            title=email.subject.strip() or "(No Subject)",
+                            content=email.body,
+                            extracted_link=None,
+                            sender=sender_display
+                        )
+                    else:
+                        if not processed_data.sender:
+                            processed_data.sender = sender_display
+                        if not processed_data.extracted_link:
+                             processed_data.extracted_link = None
+                             
+                except Exception as e:
+                    print(f"LLM Extraction failed for email {email.id}: {e}")
+                    processed_data = PInput(
+                        title=email.subject.strip() or "(No Subject)",
+                        content=email.body,
+                        sender=sender_display
+                    )
 
                 new_topics.append(
                     Topic(
                         id=email.id,
-                        title=email.subject.strip() or "(No Subject)",
-                        context=email.body,
-                        sender=email.sender,
                         timestamp=email.timestamp,
+                        processed_input=processed_data,
+                        playback_content=None
                     )
                 )
 

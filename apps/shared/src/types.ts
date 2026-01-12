@@ -1,14 +1,21 @@
 export interface PlaybackContent {
   id: string;
+  page_snapshot_url: string;
+  script_json_url: string;
   m4a_file_url: string;
+}
+
+export interface ProcessedInput {
+  title: string;
+  content: string;
+  extracted_link?: string;
+  sender?: string;
 }
 
 export interface Topic {
   id: string;
-  title: string;
-  context: string;
-  sender?: string;
   timestamp: string;
+  processed_input: ProcessedInput;
   playback_content?: PlaybackContent;
 }
 

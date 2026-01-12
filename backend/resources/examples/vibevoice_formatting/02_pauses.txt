@@ -1,4 +1,0 @@
---- INPUT ---
-I mean... wow. That is huge.
---- OUTPUT ---
-I mean... wow. That is huge.

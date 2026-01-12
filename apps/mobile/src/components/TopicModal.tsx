@@ -10,12 +10,7 @@ import {
   Paragraph,
 } from "tamagui";
 
-interface Topic {
-  id: string;
-  title: string;
-  context: string;
-  sender?: string;
-}
+import { Topic } from "@speed-code/shared";
 
 interface TopicModalProps {
   topic: Topic | null;
@@ -58,10 +53,10 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
           maxWidth={500}
         >
           <Dialog.Title fontSize="$7" fontWeight="bold" color="$stone900">
-            {topic.title}
+            {topic.processed_input.title}
           </Dialog.Title>
 
-          {topic.sender && (
+          {topic.processed_input.sender && (
             <XStack
               gap="$2"
               alignItems="center"
@@ -75,7 +70,7 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
                 From:
               </Text>
               <Text fontSize="$1" fontWeight="500" color="$stone700">
-                {topic.sender}
+                {topic.processed_input.sender}
               </Text>
             </XStack>
           )}
@@ -88,7 +83,7 @@ export const TopicModal = ({ topic, onClose }: TopicModalProps) => {
             borderColor="$stone200"
           >
             <Paragraph fontSize="$3" color="$stone600" lineHeight="$5">
-              {topic.context}
+              {topic.processed_input.content}
             </Paragraph>
           </YStack>
 

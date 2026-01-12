@@ -56,7 +56,7 @@ export const TopicList = ({ queue, currentTopic, hasStarted, onTopicClick, onInf
                                         <div className="flex flex-col overflow-hidden">
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-sm font-medium truncate transition-colors ${isPlaying ? 'text-purple-900' : 'text-stone-700 group-hover:text-purple-700'}`}>
-                                                    {topic.title}
+                                                    {topic.processed_input.title}
                                                 </span>
                                                 {isUnplayed && isReady && (
                                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />

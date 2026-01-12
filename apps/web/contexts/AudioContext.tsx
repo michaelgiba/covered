@@ -27,8 +27,8 @@ export const AudioProvider = ({ children }: { children: React.ReactNode }) => {
     const setupMediaSession = useCallback((topic?: Topic) => {
         if ("mediaSession" in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: topic?.title || "Covered Radio",
-                artist: topic?.sender || "Covered",
+                title: topic?.processed_input.title || "Covered Radio",
+                artist: topic?.processed_input.sender || "Covered",
                 album: "Daily Briefing",
             });
 

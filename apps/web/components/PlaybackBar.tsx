@@ -56,11 +56,11 @@ export const PlaybackBar = ({
             {/* Metadata (Center - Right of Play) */}
             <div className="flex flex-col flex-1 overflow-hidden px-2">
                 <ScrollingText
-                    text={currentTopic?.title || "Waiting for content..."}
+                    text={currentTopic?.processed_input.title || "Waiting for content..."}
                     className="text-sm font-bold text-stone-900"
                 />
                 <span className="text-xs font-medium text-stone-500 truncate">
-                    {currentTopic?.sender || "Speed Code"}
+                    {currentTopic?.processed_input.sender || "Speed Code"}
                 </span>
             </div>
 

@@ -1,4 +1,0 @@
---- INPUT ---
-It costs $50 and is #1.
---- OUTPUT ---
-It costs fifty dollars and is number one.
