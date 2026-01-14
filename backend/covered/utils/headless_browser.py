@@ -65,4 +65,4 @@ class HeadlessBrowserService:
             }""")
 
             browser.close()
-            return snapshot_filename, article_content
+            return snapshot_path, article_content

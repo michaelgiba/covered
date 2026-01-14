@@ -5,10 +5,11 @@ content yet and create playback objects for them.
 
 import asyncio
 import os
+import uuid
 import logging
 from typing import Dict
 
-from covered.config import PLAYBACK_DIR, MEDIA_DIR, BASE_URL
+from covered.config import PLAYBACK_DIR, MEDIA_DIR, BASE_URL, DATA_DIR, ROOT_DIR
 from covered.models.data import PlaybackContent
 from covered.models.database import Database
 from covered.utils.headless_browser import HeadlessBrowserService
@@ -27,14 +28,13 @@ async def process_topic(topic, services: Dict) -> PlaybackContent:
     tts_service = services["tts"]
 
     # 1. Generate Playback ID and Directory
-    import uuid
 
     playback_id = str(uuid.uuid4())
     playback_dir = os.path.join(MEDIA_DIR, playback_id)
     os.makedirs(playback_dir, exist_ok=True)
 
     # 2. Get snapshot and content
-    snapshot_filename, raw_content = await asyncio.to_thread(
+    snapshot_url, raw_content = await asyncio.to_thread(
         headless_service.get_snapshot_and_content,
         topic.processed_input.extracted_link,
         topic.id,
@@ -45,38 +45,19 @@ async def process_topic(topic, services: Dict) -> PlaybackContent:
     script_text = await asyncio.to_thread(_script_ops.polish, raw_content)
 
     # 4. Convert to audio
-    m4a_filename, transcript_json, _ = await generate_audio_and_transcript(
+    audio_url, script_json_url = await generate_audio_and_transcript(
         tts_service,
         script_text,
         topic.id,
         output_dir=playback_dir,
-        playback_id=playback_id,
-    )
-
-    # 5. Save script/transcript JSON
-    script_content = {"transcript": transcript_json, "text": script_text}
-    script_filename = "script.json"
-    script_path = os.path.join(playback_dir, script_filename)
-    with open(script_path, "w") as f:
-        import json
-
-        json.dump(script_content, f)
-
-    # Construct URLs (Assuming web server serves /data/playback-content/media/)
-    snapshot_url = (
-        f"{BASE_URL}/data/playback-content/media/{playback_id}/{snapshot_filename}"
-    )
-    audio_url = f"{BASE_URL}/data/playback-content/media/{playback_id}/{m4a_filename}"
-    script_json_url = (
-        f"{BASE_URL}/data/playback-content/media/{playback_id}/{script_filename}"
     )
 
     playback_content = PlaybackContent(
         id=playback_id,
         processed_input_id=topic.id,
-        page_snapshot_url=snapshot_url,
-        script_json_url=script_json_url,
-        m4a_file_url=audio_url,
+        page_snapshot_url=os.path.join(BASE_URL, os.path.relpath(snapshot_url, ROOT_DIR)),
+        script_json_url=os.path.join(BASE_URL, os.path.relpath(script_json_url, ROOT_DIR)),
+        m4a_file_url=os.path.join(BASE_URL, os.path.relpath(audio_url, ROOT_DIR)),
     )
 
     logger.info(f"Completed processing for {topic.id}")

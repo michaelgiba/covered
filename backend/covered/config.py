@@ -3,7 +3,8 @@ import logging
 
 # Base Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data"))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+DATA_DIR = os.path.abspath(os.path.join(ROOT_DIR, "data"))
 PLAYBACK_DIR = os.path.join(DATA_DIR, "playback-content")
 MEDIA_DIR = os.path.join(PLAYBACK_DIR, "media")
 
