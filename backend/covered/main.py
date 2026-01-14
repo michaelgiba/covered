@@ -11,16 +11,17 @@ from covered.tasks.web_server import start_server
 configure_logging()
 system_logger = logging.getLogger("SYSTEM")
 
+
 async def run_loop(target_duration: int | None):
     start_time = time.time()
-    
+
     # Shared state
     # processing_ids removed as per refactor
 
     # Create tasks
     curation_task = asyncio.create_task(curation_loop())
     processing_task = asyncio.create_task(processing_loop())
-    
+
     # Start Server
     server_runner = await start_server()
 
@@ -31,7 +32,9 @@ async def run_loop(target_duration: int | None):
             while True:
                 elapsed = time.time() - start_time
                 if elapsed >= target_duration:
-                    system_logger.info(f"Minimum duration of {target_duration}s reached. Exiting.")
+                    system_logger.info(
+                        f"Minimum duration of {target_duration}s reached. Exiting."
+                    )
                     break
                 await asyncio.sleep(1)
 
@@ -39,7 +42,7 @@ async def run_loop(target_duration: int | None):
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Cleanup server
             await server_runner.cleanup()
 
@@ -49,6 +52,7 @@ async def run_loop(target_duration: int | None):
 
     except asyncio.CancelledError:
         system_logger.info("Tasks cancelled.")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Covered Backend CLI")
@@ -65,6 +69,7 @@ def main():
         asyncio.run(run_loop(args.duration))
     except KeyboardInterrupt:
         system_logger.info("\nStopped by user.")
+
 
 if __name__ == "__main__":
     main()

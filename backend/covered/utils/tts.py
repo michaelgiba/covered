@@ -9,7 +9,9 @@ import copy
 import time
 
 # Add VibeVoice to path
-backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+backend_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 vibe_voice_path = os.path.join(backend_root, "VibeVoice")
 if vibe_voice_path not in sys.path:
     sys.path.append(vibe_voice_path)

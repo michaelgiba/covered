@@ -16,6 +16,7 @@ BASE_URL = f"http://192.168.1.23:{SERVER_PORT}"
 LOG_FORMAT = "[%(asctime)s] [%(name)s] %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
+
 def configure_logging():
     logging.basicConfig(
         level=logging.INFO,

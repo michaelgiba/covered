@@ -7,6 +7,7 @@ from covered.utils.llm import LLMService
 from covered.models.data import ScriptOutput
 from covered.config import BASE_DIR
 
+
 @cache
 def _get_llm_service():
     return LLMService()
@@ -15,7 +16,9 @@ def _get_llm_service():
 def polish(text: str) -> str:
     # Convert parts to a string representation for the LLM
     transcript_parts = [{"speaker": "main", "content": text}]
-    transcript_str = "\n\n".join([f"Speaker ({p['speaker']}):\n{p['content']}" for p in transcript_parts])
+    transcript_str = "\n\n".join(
+        [f"Speaker ({p['speaker']}):\n{p['content']}" for p in transcript_parts]
+    )
 
     prompt = f"""
     You are being presented with a transcript that is intended to be read aloud to an audience.
@@ -34,4 +37,3 @@ def polish(text: str) -> str:
     """
     result = _get_llm_service().prompt_without_search(prompt, ScriptOutput)
     return result.script
-
