@@ -9,6 +9,7 @@ import json
 from covered.config import MEDIA_DIR
 from covered.utils.audio import convert_to_m4a
 from covered.utils.tts import TTSService
+from covered.utils.transcription import TranscriptionService
 
 
 @contextlib.contextmanager
@@ -25,6 +26,7 @@ def temporary_wav_file(suffix: str):
 
 async def generate_audio_and_transcript(
     tts_service: TTSService,
+    transcription_service: TranscriptionService,
     script_text: str,
     topic_id: str,
     output_dir: str,
@@ -37,17 +39,8 @@ async def generate_audio_and_transcript(
         await asyncio.to_thread(tts_service.generate_audio, script_text, wav_path)
         await asyncio.to_thread(convert_to_m4a, wav_path, m4a_path)
 
-    # Step 4: Generate Transcript JSON (Estimate timestamps)
-    words = script_text.split()
-    # Assuming ~150 wpm = 2.5 words per second -> 0.4s per word
-    transcript_json = {"words": []}
-    current_time = 0.0
-    word_duration = 0.4
-    for w in words:
-        transcript_json["words"].append(
-            {"word": w, "start": current_time, "end": current_time + word_duration}
-        )
-        current_time += word_duration
+    # Step 4: Generate Transcript JSON using WhisperX
+    transcript_json = await asyncio.to_thread(transcription_service.transcribe, m4a_path)
 
     script_content = {"transcript": transcript_json, "text": script_text}
     script_filename = "script.json"

@@ -14,6 +14,7 @@ from covered.models.data import PlaybackContent
 from covered.models.database import Database
 from covered.utils.headless_browser import HeadlessBrowserService
 from covered.utils.tts import TTSService
+from covered.utils.transcription import TranscriptionService
 from covered.tasks.processing._playback import generate_audio_and_transcript
 from covered.tasks.processing import _script_ops
 
@@ -26,6 +27,7 @@ async def process_topic(topic, services: Dict) -> PlaybackContent:
 
     headless_service = services["headless"]
     tts_service = services["tts"]
+    transcription_service = services['transcription']
 
     # 1. Generate Playback ID and Directory
 
@@ -47,6 +49,7 @@ async def process_topic(topic, services: Dict) -> PlaybackContent:
     # 4. Convert to audio
     audio_url, script_json_url = await generate_audio_and_transcript(
         tts_service,
+        transcription_service,
         script_text,
         topic.id,
         output_dir=playback_dir,
@@ -69,7 +72,11 @@ async def processing_loop():
     db = Database()
 
     # Instantiate services once
-    services = {"headless": HeadlessBrowserService(MEDIA_DIR), "tts": TTSService()}
+    services = {
+        "headless": HeadlessBrowserService(MEDIA_DIR),
+        "tts": TTSService(),
+        "transcription": TranscriptionService()
+    }
 
     while True:
         topics_without_playback_content = db.get_topics_without_playback_content()
