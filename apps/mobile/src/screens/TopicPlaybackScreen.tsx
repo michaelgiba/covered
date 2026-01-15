@@ -7,7 +7,7 @@ import {
     Platform,
     TouchableOpacity,
 } from "react-native";
-import { Visualizer, ScrollingText, TranscriptCard, PlaybackControls } from "../components/";
+import { Visualizer, ScrollingText, SourceCard, TranscriptCard, PlaybackControls } from "../components/";
 import { useAudio } from "../contexts/AudioContext";
 import { useNavigation } from "../contexts/NavigationContext";
 import { usePlaybackManager } from "../contexts/PlaybackManagerContext";
@@ -26,7 +26,52 @@ export const TopicPlaybackScreen = () => {
     const { navigateTo } = useNavigation();
     const { playNextTopic, playPrevTopic } = usePlaybackManager();
 
-    const [showTranscript, setShowTranscript] = useState(false);
+    const [viewMode, setViewMode] = useState<'visualize' | 'read' | 'source'>('visualize');
+
+    const renderContent = () => {
+        switch (viewMode) {
+            case 'read':
+                return (
+                    <TranscriptCard
+                        topic={currentTopic}
+                        player={player}
+                    />
+                );
+            case 'source':
+                return (
+                    <SourceCard
+                        topic={currentTopic}
+                        isPlaying={isPlaying}
+                        isMuted={isMuted}
+                        player={player}
+                    />
+                );
+            case 'visualize':
+            default:
+                return (
+                    <View
+                        style={styles.visualizerTouchable}
+                    >
+                        <Visualizer
+                            isPlaying={isPlaying}
+                            isMuted={isMuted}
+                            onToggleMute={() => { }}
+                            player={player}
+                        />
+                        {/* Metadata */}
+                        <View style={styles.metadataContainer}>
+                            <ScrollingText
+                                text={currentTopic?.processed_input.title || ""}
+                                className="text-2xl font-bold text-stone-900 mb-2"
+                            />
+                            <Text style={styles.topicSender}>
+                                {currentTopic?.processed_input.sender}
+                            </Text>
+                        </View>
+                    </View>
+                );
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -38,45 +83,35 @@ export const TopicPlaybackScreen = () => {
                 >
                     <ChevronDown size={28} color="#1c1917" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Now Playing</Text>
+                {/* View Toggles */}
+                <View style={styles.toggleContainer}>
+                    {(['visualize', 'read', 'source'] as const).map((mode) => (
+                        <TouchableOpacity
+                            key={mode}
+                            style={[
+                                styles.toggleChip,
+                                viewMode === mode && styles.toggleChipActive,
+                            ]}
+                            onPress={() => setViewMode(mode)}
+                        >
+                            <Text
+                                style={[
+                                    styles.toggleText,
+                                    viewMode === mode && styles.toggleTextActive,
+                                ]}
+                            >
+                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
                 <View style={{ width: 28 }} />
             </View>
 
             <View style={styles.content}>
                 {/* Top Section - Visualizer or Transcript (fixed height area) */}
                 <View style={styles.topSection}>
-                    {showTranscript ? (
-                        <TranscriptCard
-                            topic={currentTopic}
-                            onPress={() => setShowTranscript(false)}
-                            isPlaying={isPlaying}
-                            isMuted={isMuted}
-                            player={player}
-                        />
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.visualizerTouchable}
-                            onPress={() => setShowTranscript(true)}
-                            activeOpacity={1}
-                        >
-                            <Visualizer
-                                isPlaying={isPlaying}
-                                isMuted={isMuted}
-                                onToggleMute={() => { }}
-                                player={player}
-                            />
-                            {/* Metadata */}
-                            <View style={styles.metadataContainer}>
-                                <ScrollingText
-                                    text={currentTopic?.processed_input.title || ""}
-                                    className="text-2xl font-bold text-stone-900 mb-2"
-                                />
-                                <Text style={styles.topicSender}>
-                                    {currentTopic?.processed_input.sender}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    )}
+                    {renderContent()}
                 </View>
 
                 {/* Controls */}
@@ -109,10 +144,34 @@ const styles = StyleSheet.create({
     backButton: {
         padding: 8,
     },
-    headerTitle: {
-        fontSize: 16,
-        fontWeight: "600",
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#e7e5e4',
+        borderRadius: 20,
+        padding: 4,
+        gap: 4,
+    },
+    toggleChip: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+    },
+    toggleChipActive: {
+        backgroundColor: 'white',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    toggleText: {
+        fontSize: 14,
+        fontWeight: "500",
+        color: "#78716c",
+    },
+    toggleTextActive: {
         color: "#1c1917",
+        fontWeight: "600",
     },
     content: {
         flex: 1,

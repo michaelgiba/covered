@@ -1,56 +1,135 @@
-import React from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     StyleSheet,
     Text,
     View,
-    TouchableOpacity,
     ScrollView,
+    ActivityIndicator,
 } from "react-native";
 import { Topic } from "@speed-code/shared";
 import { AudioPlayer } from "expo-audio";
-import { MiniVisualizer } from "./MiniVisualizer";
 
 interface TranscriptCardProps {
     topic: Topic | null;
-    onPress: () => void;
-    isPlaying: boolean;
-    isMuted: boolean;
     player: AudioPlayer | null;
+}
+
+interface TranscriptSegment {
+    start: number;
+    end: number;
+    segment: string;
+}
+
+interface TranscriptData {
+    transcript: {
+        segments: TranscriptSegment[];
+    };
+    text: string;
 }
 
 export const TranscriptCard = ({
     topic,
-    onPress,
-    isPlaying,
-    isMuted,
     player,
 }: TranscriptCardProps) => {
-    return (
-        <TouchableOpacity
-            style={styles.container}
-            onPress={onPress}
-            activeOpacity={0.9}
-        >
-            <View style={styles.header}>
-                <View style={styles.titleContainer}>
-                    <Text style={styles.title}>{topic?.processed_input.title}</Text>
-                    <Text style={styles.timestamp}>{topic?.timestamp}</Text>
-                </View>
-                <View style={styles.visualizerWrapper}>
-                    <MiniVisualizer
-                        isPlaying={isPlaying}
-                        isMuted={isMuted}
-                        player={player}
-                        size={64}
-                    />
+    const [segments, setSegments] = useState<TranscriptSegment[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [activeindex, setActiveIndex] = useState<number>(-1);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const segmentRefs = useRef<(View | null)[]>([]);
+
+    useEffect(() => {
+        const fetchTranscript = async () => {
+            if (!topic?.playback_content?.script_json_url) return;
+
+            try {
+                setLoading(true);
+                const response = await fetch(topic.playback_content.script_json_url);
+                const data: TranscriptData = await response.json();
+                if (data.transcript && data.transcript.segments) {
+                    setSegments(data.transcript.segments);
+                }
+            } catch (error) {
+                console.error("Failed to fetch transcript:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTranscript();
+    }, [topic]);
+
+    // Update active segment based on playback time
+    useEffect(() => {
+        if (!player || segments.length === 0) return;
+
+        const interval = setInterval(() => {
+            const currentTime = player.currentTime;
+            const index = segments.findIndex(
+                (seg) => currentTime >= seg.start && currentTime <= seg.end
+            );
+
+            if (index !== -1 && index !== activeindex) {
+                setActiveIndex(index);
+                // Optional: Scroll to active segment
+                // segmentRefs.current[index]?.measureLayout( ... )
+            }
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [player, segments, activeindex]);
+
+    // Scroll to active segment
+    useEffect(() => {
+        if (activeindex !== -1 && scrollViewRef.current && activeindex < segments.length) {
+            // Simple scroll to rough position
+            // This is a rough estimation or we need layout measurement
+        }
+    }, [activeindex]);
+
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.center}>
+                    <ActivityIndicator color="#1c1917" />
                 </View>
             </View>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                <Text style={styles.content}>
-                    {topic?.processed_input.content || "No transcript available."}
+        );
+    }
+
+    if (segments.length === 0) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.center}>
+                    <Text style={styles.errorText}>No transcript available</Text>
+                </View>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text style={styles.textContainer}>
+                    {segments.map((segment, index) => (
+                        <Text
+                            key={index}
+                            style={[
+                                styles.segment,
+                                index === activeindex && styles.activeSegment,
+                            ]}
+                        >
+                            {segment.segment}{" "}
+                        </Text>
+                    ))}
                 </Text>
             </ScrollView>
-        </TouchableOpacity>
+        </View>
     );
 };
 
@@ -67,37 +146,34 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 5,
     },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 16,
-    },
-    titleContainer: {
-        flex: 1,
-        marginRight: 8,
-        justifyContent: "center",
-    },
-    visualizerWrapper: {
-        marginTop: -24,
-        marginRight: -24,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: "700",
-        color: "#1c1917",
-        marginBottom: 4,
-    },
-    timestamp: {
-        fontSize: 14,
-        color: "#78716c",
-    },
     scrollView: {
         flex: 1,
     },
-    content: {
-        fontSize: 16,
-        lineHeight: 26,
-        color: "#44403c",
+    scrollContent: {
+        paddingBottom: 24,
     },
+    textContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    segment: {
+        fontSize: 18,
+        lineHeight: 28,
+        color: "#a8a29e", // muted color
+    },
+    activeSegment: {
+        color: "#1c1917",
+        backgroundColor: "#f5f5f4", // warm grey 100
+        borderRadius: 4,
+        overflow: 'hidden', // ensuring border radius works on text on Android sometimes needs this or just works
+    },
+    center: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    errorText: {
+        color: "#78716c",
+        fontSize: 16,
+    }
 });

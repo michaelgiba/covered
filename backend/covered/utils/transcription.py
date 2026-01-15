@@ -34,12 +34,12 @@ class TranscriptionService:
         # Transcribe directly without try/except
         output = self.model.transcribe([audio_path], timestamps=True)
 
-        word_timestamps = output[0][0].timestep['word'] # word level timestamps for first sample
+        # word_timestamps = output[0][0].timestep['word'] # word level timestamps for first sample
         # char_timestamps = output[0][0].timestep['char'] # char level timestamps for first sample
-        # segment_timestamps = output[0][0].timestep['segment'] # segment level timestamps for first sample
+        segment_timestamps = output[0][0].timestep['segment'] # segment level timestamps for first sample
 
         
-        return {"words": word_timestamps}
+        return {"segments": segment_timestamps}
 
     def cleanup(self):
         """Releases GPU memory."""
