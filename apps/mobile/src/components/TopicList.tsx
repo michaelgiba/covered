@@ -4,6 +4,7 @@ import {
     Text,
     View,
     TouchableOpacity,
+    Image,
 } from "react-native";
 import { Topic, formatTime } from "@speed-code/shared";
 import { Mail, PlayCircle, Info } from "@tamagui/lucide-icons";
@@ -14,11 +15,9 @@ interface TopicListProps {
     currentTopic: Topic | null;
     onTopicClick: (topic: Topic) => void;
     onPlayTopic: (topic: Topic) => void;
-    onQuickPlay: (topic: Topic) => void;
-    onInfoClick: (topic: Topic) => void;
 }
 
-export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQuickPlay, onInfoClick }: TopicListProps) => {
+export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic }: TopicListProps) => {
     const displayQueue = queue;
 
     const { isPlayed } = usePlaybackManager();
@@ -28,12 +27,6 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
             onPlayTopic(topic);
         } else {
             onTopicClick(topic);
-        }
-    };
-
-    const handleQuickPlay = (topic: Topic) => {
-        if (topic.playback_content) {
-            onQuickPlay(topic);
         }
     };
 
@@ -62,17 +55,18 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                             onPress={() => isReady && handleItemClick(topic)}
                             disabled={!isReady}
                         >
-                            <TouchableOpacity
-                                style={[styles.queueIcon, isPlaying && styles.playingQueueIcon]}
-                                onPress={() => isReady && handleQuickPlay(topic)}
-                                disabled={!isReady}
-                            >
-                                {isReady ? (
-                                    <PlayCircle size={16} color={isPlaying ? "white" : "#10b981"} />
+                            <View style={[styles.queueIconContainer, isPlaying && styles.playingQueueIconContainer]}>
+                                {isReady && topic.playback_content?.thumbnail_url ? (
+                                    <Image
+                                        source={{ uri: topic.playback_content.thumbnail_url }}
+                                        style={styles.thumbnail}
+                                    />
                                 ) : (
-                                    <Mail size={16} color="#a8a29e" />
+                                    <View style={[styles.queueIcon, isPlaying && styles.playingQueueIcon]}>
+                                        <Mail size={16} color={isPlaying ? "white" : "#a8a29e"} />
+                                    </View>
                                 )}
-                            </TouchableOpacity>
+                            </View>
                             <View style={styles.queueContent}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                     <Text
@@ -104,9 +98,6 @@ export const TopicList = ({ queue, currentTopic, onTopicClick, onPlayTopic, onQu
                                         <Text style={styles.playingText}>Playing</Text>
                                     </View>
                                 )}
-                                <TouchableOpacity onPress={() => onInfoClick(topic)}>
-                                    <Info size={16} color="#a8a29e" />
-                                </TouchableOpacity>
                             </View>
                         </TouchableOpacity>
                     );
@@ -162,11 +153,29 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1, // Use border bottom instead of full border
         borderBottomColor: "#f5f5f4",
     },
-    queueIcon: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: "#f5f5f4",
+    queueIconContainer: {
         marginRight: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: "#f5f5f4",
+    },
+    playingQueueIconContainer: {
+        // backgroundColor: "#a855f7", // handled by queueIcon's internal logic or outer container if needed
+    },
+    queueIcon: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        // backgroundColor: "#f5f5f4", // already on container
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
     },
     queueContent: {
         flex: 1,

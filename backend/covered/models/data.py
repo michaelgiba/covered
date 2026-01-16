@@ -23,6 +23,7 @@ class PlaybackContent(BaseModel):
     id: str  # generated uuid
     processed_input_id: str
     page_snapshot_url: str
+    thumbnail_url: Optional[str] = None
     script_json_url: str
     m4a_file_url: str
 

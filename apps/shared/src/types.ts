@@ -2,6 +2,7 @@ export interface PlaybackContent {
   id: string;
   processed_input_id: string;
   page_snapshot_url: string;
+  thumbnail_url?: string;
   script_json_url: string;
   m4a_file_url: string;
 }

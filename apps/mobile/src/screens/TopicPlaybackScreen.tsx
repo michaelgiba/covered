@@ -58,16 +58,6 @@ export const TopicPlaybackScreen = () => {
                             onToggleMute={() => { }}
                             player={player}
                         />
-                        {/* Metadata */}
-                        <View style={styles.metadataContainer}>
-                            <ScrollingText
-                                text={currentTopic?.processed_input.title || ""}
-                                className="text-2xl font-bold text-stone-900 mb-2"
-                            />
-                            <Text style={styles.topicSender}>
-                                {currentTopic?.processed_input.sender}
-                            </Text>
-                        </View>
                     </View>
                 );
         }
@@ -83,6 +73,28 @@ export const TopicPlaybackScreen = () => {
                 >
                     <ChevronDown size={28} color="#1c1917" />
                 </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                    <Text style={styles.headerTitle}>Now Playing</Text>
+                </View>
+            </View>
+
+            <View style={styles.content}>
+                {/* Topic Title */}
+                <View style={styles.titleContainer}>
+                    <Text
+                        style={styles.topicTitle}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                    >
+                        {currentTopic?.processed_input.title || ""}
+                    </Text>
+                </View>
+
+                {/* Top Section - Visualizer or Transcript (fixed height area) */}
+                <View style={styles.topSection}>
+                    {renderContent()}
+                </View>
+
                 {/* View Toggles */}
                 <View style={styles.toggleContainer}>
                     {(['visualize', 'read', 'source'] as const).map((mode) => (
@@ -104,14 +116,6 @@ export const TopicPlaybackScreen = () => {
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
-                <View style={{ width: 28 }} />
-            </View>
-
-            <View style={styles.content}>
-                {/* Top Section - Visualizer or Transcript (fixed height area) */}
-                <View style={styles.topSection}>
-                    {renderContent()}
                 </View>
 
                 {/* Controls */}
@@ -136,7 +140,9 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === "android" ? 40 : 0,
     },
     header: {
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 0,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
@@ -147,14 +153,16 @@ const styles = StyleSheet.create({
     toggleContainer: {
         flexDirection: 'row',
         backgroundColor: '#e7e5e4',
-        borderRadius: 20,
-        padding: 4,
-        gap: 4,
+        borderRadius: 25,
+        padding: 6,
+        gap: 6,
+        alignSelf: 'center', // Center it horizontally
+        marginBottom: 20,
     },
     toggleChip: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 16,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
     },
     toggleChipActive: {
         backgroundColor: 'white',
@@ -176,7 +184,7 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         paddingHorizontal: 20,
-        paddingTop: 10,
+        paddingTop: 0,
         paddingBottom: 20,
         justifyContent: "flex-start",
         alignItems: "center",
@@ -194,14 +202,29 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    metadataContainer: {
-        alignItems: "center",
-        gap: 8,
-        width: "100%",
+    headerTitleContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 44, // Balance the back button width to center the text
     },
-    topicSender: {
+    headerTitle: {
         fontSize: 16,
-        color: "#78716c",
-        fontWeight: "500",
+        fontWeight: '600',
+        color: '#1c1917',
+    },
+    titleContainer: {
+        width: '100%',
+        marginBottom: 10,
+        alignItems: 'center',
+        height: 40,
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+    },
+    topicTitle: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#1c1917',
+        textAlign: 'center',
     },
 });

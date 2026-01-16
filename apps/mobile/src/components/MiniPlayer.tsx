@@ -1,10 +1,9 @@
 import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
 import { useAudio } from "../contexts/AudioContext";
 import { useNavigation } from "../contexts/NavigationContext";
-import { Play, Pause } from "@tamagui/lucide-icons";
+import { Play, Pause, Mail } from "@tamagui/lucide-icons";
 import { ScrollingText } from "./ScrollingText";
-import { MiniVisualizer } from "./MiniVisualizer";
 
 export const MiniPlayer = () => {
     const { currentTopic, isPlaying, isMuted, togglePlay, player } = useAudio();
@@ -18,12 +17,16 @@ export const MiniPlayer = () => {
             onPress={() => navigateTo("Player")}
             activeOpacity={0.9}
         >
-            <MiniVisualizer
-                isPlaying={isPlaying}
-                isMuted={isMuted}
-                player={player}
-                size={64}
-            />
+            {currentTopic.playback_content?.thumbnail_url ? (
+                <Image
+                    source={{ uri: currentTopic.playback_content.thumbnail_url }}
+                    style={styles.thumbnail}
+                />
+            ) : (
+                <View style={styles.thumbnailPlaceholder}>
+                    <Mail size={20} color="#a8a29e" />
+                </View>
+            )}
             <View style={styles.infoContainer}>
                 <ScrollingText
                     text={currentTopic.processed_input.title}
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
         right: 20,
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderRadius: 16,
-        padding: 0,
+        padding: 8, // Add padding
         height: 64,
         flexDirection: "row",
         alignItems: "center",
@@ -72,8 +75,22 @@ const styles = StyleSheet.create({
     },
     infoContainer: {
         flex: 1,
-        marginRight: 12,
+        marginHorizontal: 12,
         overflow: "hidden",
+    },
+    thumbnail: {
+        width: 48,
+        height: 48,
+        borderRadius: 8,
+        backgroundColor: "#f5f5f4",
+    },
+    thumbnailPlaceholder: {
+        width: 48,
+        height: 48,
+        borderRadius: 8,
+        backgroundColor: "#f5f5f4",
+        alignItems: "center",
+        justifyContent: "center",
     },
     senderText: {
         fontSize: 10,

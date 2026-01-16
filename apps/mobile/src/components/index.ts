@@ -6,6 +6,5 @@ export * from './TopicList';
 export * from './MiniPlayer';
 export * from './SourceCard';
 export * from './PlaybackControls';
-export * from './MiniVisualizer';
 export * from './TranscriptCard';
 

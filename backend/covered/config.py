@@ -13,6 +13,9 @@ SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 8000
 BASE_URL = f"http://192.168.1.23:{SERVER_PORT}"
 
+# TTS Configuration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 # Logging Configuration
 LOG_FORMAT = "[%(asctime)s] [%(name)s] %(message)s"
 DATE_FORMAT = "%H:%M:%S"

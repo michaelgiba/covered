@@ -11,7 +11,6 @@ LogBox.ignoreLogs(["Expo AV has been deprecated"]);
 const queryClient = new QueryClient();
 
 import { NavigationProvider, useNavigation } from "./src/contexts/NavigationContext";
-import { TopicDetailScreen } from "./src/screens/TopicDetailScreen";
 import { TopicPlaybackScreen } from "./src/screens/TopicPlaybackScreen";
 
 const AppContent = () => {
@@ -21,7 +20,6 @@ const AppContent = () => {
     <>
       {currentScreen === "Home" && <HomeScreen />}
       {currentScreen === "Player" && <TopicPlaybackScreen />}
-      {currentScreen === "TopicDetail" && <TopicDetailScreen />}
       <StatusBar style="auto" />
     </>
   );

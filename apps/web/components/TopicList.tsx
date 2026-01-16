@@ -50,8 +50,16 @@ export const TopicList = ({ queue, currentTopic, hasStarted, onTopicClick, onInf
                                     exit={{ opacity: 0, x: 10, transition: { duration: 0.2 } }}
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className={`p-2 rounded-full ${isPlaying ? 'bg-purple-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
-                                            <Mail size={16} />
+                                        <div className={`relative w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 ${isPlaying ? 'bg-purple-500 text-white' : 'bg-stone-100 text-stone-400'}`}>
+                                            {topic.playback_content?.thumbnail_url ? (
+                                                <img
+                                                    src={topic.playback_content.thumbnail_url}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <Mail size={16} />
+                                            )}
                                         </div>
                                         <div className="flex flex-col overflow-hidden">
                                             <div className="flex items-center gap-2">

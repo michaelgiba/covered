@@ -1,26 +1,34 @@
 import os
 import logging
-import torch
 import gc
 import json
-import nemo.collections.asr as nemo_asr
 
 logger = logging.getLogger("TRANSCRIPTION")
 
 class TranscriptionService:
     def __init__(self):
-        # Always assume CUDA as requested
-        self.device = "cuda"
+        # Strictly use CPU
+        self.device = "cpu"
         self.model = None
 
     def _load_model(self):
         if self.model is None:
-            logger.info(f"Loading Parakeet TDT model on {self.device}...")
-            # Load the model directly without try/except
-            self.model = nemo_asr.models.ASRModel.from_pretrained(model_name="nvidia/parakeet-tdt-0.6b-v2")
+            # Force CPU usage for NeMo/Torch by hiding GPU
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
             
-            # Assume cuda support and move model
-            self.model = self.model.cuda()
+            import torch
+            import nemo.collections.asr as nemo_asr
+
+            logger.info("Loading Parakeet TDT model (CPU)...")
+            
+            # Load the model directly without try/except
+            self.model = nemo_asr.models.EncDecRNNTBPEModel.from_pretrained(
+                model_name="nvidia/parakeet-tdt-0.6b-v2",
+                map_location=torch.device("cpu")
+            )
+            
+            # Move model to device (CPU)
+            self.model = self.model.to(self.device)
             self.model.eval()
             logger.info("Model loaded.")
 
@@ -47,4 +55,4 @@ class TranscriptionService:
             del self.model
             self.model = None
         gc.collect()
-        torch.cuda.empty_cache()
+

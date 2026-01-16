@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-type Screen = "Home" | "Player" | "TopicDetail";
+type Screen = "Home" | "Player";
 
 interface NavigationContextType {
     currentScreen: Screen;
