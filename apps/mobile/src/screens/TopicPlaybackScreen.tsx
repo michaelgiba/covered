@@ -6,12 +6,23 @@ import {
     SafeAreaView,
     Platform,
     TouchableOpacity,
+    TouchableWithoutFeedback,
+    LayoutAnimation,
+    UIManager,
 } from "react-native";
 import { Visualizer, ScrollingText, SourceCard, TranscriptCard, PlaybackControls } from "../components/";
 import { useAudio } from "../contexts/AudioContext";
 import { useNavigation } from "../contexts/NavigationContext";
 import { usePlaybackManager } from "../contexts/PlaybackManagerContext";
 import { ChevronDown } from "@tamagui/lucide-icons";
+
+// Enable LayoutAnimation for Android
+if (
+    Platform.OS === 'android' &&
+    UIManager.setLayoutAnimationEnabledExperimental
+) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export const TopicPlaybackScreen = () => {
     const {
@@ -27,6 +38,12 @@ export const TopicPlaybackScreen = () => {
     const { playNextTopic, playPrevTopic } = usePlaybackManager();
 
     const [viewMode, setViewMode] = useState<'visualize' | 'read' | 'source'>('visualize');
+    const [isControlsExpanded, setIsControlsExpanded] = useState(false);
+
+    const toggleControls = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsControlsExpanded(!isControlsExpanded);
+    };
 
     const renderContent = () => {
         switch (viewMode) {
@@ -78,57 +95,68 @@ export const TopicPlaybackScreen = () => {
                 </View>
             </View>
 
-            <View style={styles.content}>
-                {/* Topic Title */}
-                <View style={styles.titleContainer}>
-                    <Text
-                        style={styles.topicTitle}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                    >
-                        {currentTopic?.processed_input.title || ""}
-                    </Text>
-                </View>
-
-                {/* Top Section - Visualizer or Transcript (fixed height area) */}
-                <View style={styles.topSection}>
-                    {renderContent()}
-                </View>
-
-                {/* View Toggles */}
-                <View style={styles.toggleContainer}>
-                    {(['visualize', 'read', 'source'] as const).map((mode) => (
-                        <TouchableOpacity
-                            key={mode}
-                            style={[
-                                styles.toggleChip,
-                                viewMode === mode && styles.toggleChipActive,
-                            ]}
-                            onPress={() => setViewMode(mode)}
-                        >
+            <TouchableWithoutFeedback onPress={toggleControls}>
+                <View style={[styles.content, !isControlsExpanded && { justifyContent: 'space-between' }]}>
+                    {/* Top Content Area */}
+                    <View style={{ flex: 1, width: '100%' }}>
+                        {/* Topic Title */}
+                        <View style={styles.titleContainer}>
                             <Text
-                                style={[
-                                    styles.toggleText,
-                                    viewMode === mode && styles.toggleTextActive,
-                                ]}
+                                style={styles.topicTitle}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
                             >
-                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                {currentTopic?.processed_input.title || ""}
                             </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                        </View>
 
-                {/* Controls */}
-                <PlaybackControls
-                    isPlaying={isPlaying}
-                    isMuted={isMuted}
-                    onTogglePlay={togglePlay}
-                    onToggleMute={toggleMute}
-                    onSeekBy={seekBy}
-                    onPlayNext={playNextTopic}
-                    onPlayPrev={playPrevTopic}
-                />
-            </View>
+                        {/* Top Section - Visualizer or Transcript (fixed height area) */}
+                        <View style={styles.topSection}>
+                            {renderContent()}
+                        </View>
+
+                        {/* View Toggles */}
+                        <View style={styles.toggleContainer}>
+                            {(['visualize', 'read', 'source'] as const).map((mode) => (
+                                <TouchableOpacity
+                                    key={mode}
+                                    style={[
+                                        styles.toggleChip,
+                                        viewMode === mode && styles.toggleChipActive,
+                                    ]}
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        setViewMode(mode);
+                                    }}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.toggleText,
+                                            viewMode === mode && styles.toggleTextActive,
+                                        ]}
+                                    >
+                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Controls */}
+                    <View style={{ marginBottom: isControlsExpanded ? 0 : 10, width: '100%', alignItems: 'center' }} >
+                        <PlaybackControls
+                            isPlaying={isPlaying}
+                            isMuted={isMuted}
+                            onTogglePlay={togglePlay}
+                            onToggleMute={toggleMute}
+                            onSeekBy={seekBy}
+                            onPlayNext={playNextTopic}
+                            onPlayPrev={playPrevTopic}
+                            isExpanded={isControlsExpanded}
+                        />
+                    </View>
+                </View>
+            </TouchableWithoutFeedback>
         </SafeAreaView>
     );
 };
@@ -146,6 +174,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+        zIndex: 10,
     },
     backButton: {
         padding: 8,
@@ -183,10 +212,10 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: 20, // Restored padding
         paddingTop: 0,
         paddingBottom: 20,
-        justifyContent: "flex-start",
+        justifyContent: "flex-end", // Push controls to bottom when expanded
         alignItems: "center",
     },
     topSection: {
@@ -219,7 +248,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         height: 40,
         justifyContent: 'center',
-        paddingHorizontal: 20,
+        // paddingHorizontal: 20, // Removed manual padding since parent has it
     },
     topicTitle: {
         fontSize: 14,
