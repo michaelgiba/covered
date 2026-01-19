@@ -61,11 +61,11 @@ class Database:
         """Retrieves a processed input by ID."""
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT data FROM processed_inputs WHERE id = ?", (input_id,))
         row = cursor.fetchone()
         conn.close()
-        
+
         if row:
             data = json.loads(row[0])
             return ProcessedInput(**data)

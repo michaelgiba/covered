@@ -19,6 +19,18 @@ const nextConfig: NextConfig = {
         source: "/data/:path*",
         destination: "http://localhost:8000/data/:path*",
       },
+      {
+        source: "/topics",
+        destination: "http://localhost:8000/topics",
+      },
+      {
+        source: "/processed-inputs",
+        destination: "http://localhost:8000/processed-inputs",
+      },
+      {
+        source: "/playback-contents",
+        destination: "http://localhost:8000/playback-contents",
+      },
     ];
   },
   transpilePackages: ['tamagui', '@speed-code/shared', 'react-native-svg', 'react-native-reanimated'],

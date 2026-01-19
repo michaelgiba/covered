@@ -1,0 +1,17 @@
+.openapi-generator-ignore
+apis/DefaultApi.ts
+apis/index.ts
+docs/DefaultApi.md
+docs/ModelError.md
+docs/PlaybackContentSchema.md
+docs/ProcessedInputSchema.md
+docs/TopicListSchema.md
+docs/TopicSchema.md
+index.ts
+models/ModelError.ts
+models/PlaybackContentSchema.ts
+models/ProcessedInputSchema.ts
+models/TopicListSchema.ts
+models/TopicSchema.ts
+models/index.ts
+runtime.ts

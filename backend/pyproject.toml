@@ -29,6 +29,7 @@ dependencies = [
     "flask>=3.1.2",
     "flask-rebar>=3.3.2",
     "marshmallow>=3.26.2",
+    "flask-cors>=6.0.2",
 ]
 
 [project.scripts]

@@ -1,9 +1,12 @@
 import { Topic } from "../types";
 
 export const fetchTopics = async (baseUrl: string): Promise<Topic[]> => {
-    const res = await fetch(`${baseUrl}/topics.json`, { cache: 'no-store' });
+    // Ensure baseUrl doesn't have trailing slash if empty string
+    const url = baseUrl ? `${baseUrl}/topics` : '/topics';
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
         throw new Error("Failed to fetch topics");
     }
-    return res.json();
+    const data = await res.json();
+    return data.topics;
 };

@@ -71,41 +71,25 @@ class HeadlessBrowserService:
 
             # Attempt to find and capture favicon
             found_thumbnail_path = None
-            try:
-                # 1. Try to find the favicon URL from the DOM
-                favicon_url = page.evaluate("""() => {
-                    let link = document.querySelector("link[rel~='icon']");
-                    if (!link) {
-                        return window.location.origin + "/favicon.ico";
-                    }
-                    return link.href;
-                }""")
-                
-                if favicon_url:
-                    # Create a new page for the favicon to avoid messing with current page state or size
-                    # unnecessarily, although accessing an image directly is simple.
-                    # Better yet, just use requests since we have the URL, but using the browser
-                    # ensures we handle redirects/cookies if they were relevant (less so for favicon).
-                    # Actually, simply taking a screenshot of the icon might be overkill if it's an image file.
-                    # But the requirement is "captured by the headless browser".
-                    # Let's try to just download it or render it.
-                    # Rendering it on a small page ensures we get a png even if it is an ico/svg.
-                    
-                    icon_page = browser.new_page(viewport={"width": 128, "height": 128}) 
-                    # If it's an image, we can just goto it.
-                    try:
-                        icon_page.goto(favicon_url, timeout=10000)
-                        # We just take a screenshot of the visible area
-                        icon_page.screenshot(path=thumbnail_path)
-                        found_thumbnail_path = thumbnail_path
-                    except Exception as e:
-                        print(f"Failed to capture favicon from {favicon_url}: {e}")
-                    finally:
-                        icon_page.close()
+            # 1. Try to find the favicon URL from the DOM
+            favicon_url = page.evaluate("""() => {
+                let link = document.querySelector("link[rel~='icon']");
+                if (!link) {
+                    return window.location.origin + "/favicon.ico";
+                }
+                return link.href;
+            }""")
 
-            except Exception as e:
-                print(f"Error finding/capturing favicon: {e}")
-
+            if favicon_url:
+                icon_page = browser.new_page(viewport={"width": 128, "height": 128})
+                # If it's an image, we can just goto it.
+                try:
+                    icon_page.goto(favicon_url, timeout=10000)
+                    # We just take a screenshot of the visible area
+                    icon_page.screenshot(path=thumbnail_path)
+                    found_thumbnail_path = thumbnail_path
+                finally:
+                    icon_page.close()
 
             # Extract content using Readability
             article_content = page.evaluate("""() => {
@@ -119,5 +103,5 @@ class HeadlessBrowserService:
             return PageContent(
                 snapshot_path=snapshot_path,
                 thumbnail_path=found_thumbnail_path,
-                extracted_text=article_content
+                extracted_text=article_content,
             )
