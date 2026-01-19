@@ -1,19 +1,25 @@
-import uuid
-import random
-import os
+import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+import os
+import requests
 from typing import List, Optional
+from imap_tools import MailBox
+
+from covered.config import (
+    BASE_URL,
+    DATA_DIR,
+    configure_logging,
+)
 from covered.models.data import Email, ProcessedInput
 from covered.utils.llm import LLMService
-from covered.config import DATA_DIR
-from imap_tools import MailBox
+
+configure_logging()
+logger = logging.getLogger("CURATOR_WORKER")
+logger_email = logging.getLogger("EMAIL_SERVICE")
 
 EMAIL_APP_PASSWORD = "xgqq brvh hshg hcdv"
 EMAIL_ADDRESS = "coveredappinbox@gmail.com"
-
-logger = logging.getLogger("EMAIL_SERVICE")
 
 
 class EmailService:
@@ -61,14 +67,14 @@ class EmailService:
             with MailBox("imap.gmail.com").login(
                 EMAIL_ADDRESS, EMAIL_APP_PASSWORD, initial_folder="INBOX"
             ) as mailbox:
-                logger.info(f"Connected to {mailbox.folder.get()}")
+                logger_email.info(f"Connected to {mailbox.folder.get()}")
 
                 # Fetch all emails explicitly
                 # We fetch a limit to avoid overwhelming, but we should rely on cursor logic
                 fetched_msgs = list(
                     mailbox.fetch(criteria="ALL", limit=20, reverse=True)
                 )
-                logger.info(f"Found {len(fetched_msgs)} emails.")
+                logger_email.info(f"Found {len(fetched_msgs)} emails.")
 
                 for msg in fetched_msgs:
                     # Handle potential missing body
@@ -83,7 +89,7 @@ class EmailService:
                     )
                     emails.append(email)
         except Exception as e:
-            logger.error(f"Error downloading emails: {e}")
+            logger_email.error(f"Error downloading emails: {e}")
 
         return emails
 
@@ -121,3 +127,56 @@ class EmailService:
             self._save_cursor(latest_timestamp)
 
         return new_processed_inputs
+
+
+def curate_step():
+    # Ensure data dir exists (handled by services, but good to have)
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    logger.info("1. Fetching and Curating Emails...")
+    email_service = EmailService()
+    
+    new_inputs = email_service.fetch_new()
+
+    if new_inputs:
+        logger.info(f"Found {len(new_inputs)} new inputs. Storing via API...")
+        for p_input in new_inputs:
+            try:
+                # Post to API
+                resp = requests.post(
+                    f"{BASE_URL}/processed-inputs", 
+                    json=p_input.model_dump()
+                )
+                resp.raise_for_status()
+            except Exception as e:
+                logger.error(f"Failed to post input {p_input.id}: {e}")
+                
+        logger.info(f"Processed {len(new_inputs)} new inputs.")
+    else:
+        logger.info("No new emails found.")
+
+
+async def curation_loop():
+    logger.info("Starting Curation Loop...")
+    while True:
+        try:
+            # Run blocking curation in a separate thread
+            await asyncio.to_thread(curate_step)
+        except Exception as e:
+            logger.error(f"Error in curation loop: {e}", exc_info=True)
+
+        # Wait before next curation cycle
+        await asyncio.sleep(60)
+
+
+def main():
+    logger.info("Starting Curator Worker")
+    try:
+        asyncio.run(curation_loop())
+    except KeyboardInterrupt:
+        logger.info("Curator Worker stopped by user.")
+    except Exception as e:
+        logger.critical(f"Curator Worker crashed: {e}", exc_info=True)
+
+if __name__ == "__main__":
+    main()

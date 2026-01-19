@@ -1,75 +1,100 @@
-import argparse
-import asyncio
+from flask import Flask, send_from_directory
+from flask_rebar import Rebar, errors
 import logging
-import time
-from covered.config import configure_logging
-from covered.tasks.curation import curation_loop
-from covered.tasks.processing import processing_loop
-from covered.tasks.web_server import start_server
+import os
 
-# Configure Logging
+from covered.config import DATA_DIR, SERVER_HOST, SERVER_PORT, configure_logging
+from covered.models.database import Database
+from covered.models.data import ProcessedInput, PlaybackContent, Topic
+from covered.utils.queue import QueueService
+from covered.api.schemas import ProcessedInputSchema, PlaybackContentSchema, TopicSchema, TopicListSchema
+
 configure_logging()
-system_logger = logging.getLogger("SYSTEM")
+logger = logging.getLogger("MAIN_SERVICE")
 
+rebar = Rebar()
+registry = rebar.create_handler_registry()
 
-async def run_loop(target_duration: int | None):
-    start_time = time.time()
+def create_app():
+    app = Flask(__name__)
+    
+    @app.route('/data/<path:filename>')
+    def serve_data(filename):
+        return send_from_directory(DATA_DIR, filename)
 
-    # Shared state
-    # processing_ids removed as per refactor
+    rebar.init_app(app)
+    return app
 
-    # Create tasks
-    curation_task = asyncio.create_task(curation_loop())
-    processing_task = asyncio.create_task(processing_loop())
-
-    # Start Server
-    server_runner = await start_server()
-
-    tasks = [curation_task, processing_task]
-
+@registry.handles(
+    rule='/processed-inputs',
+    method='POST',
+    request_body_schema=ProcessedInputSchema(),
+    response_body_schema=ProcessedInputSchema(),
+)
+def create_processed_input():
+    body = rebar.validated_body
+    
     try:
-        if target_duration is not None:
-            while True:
-                elapsed = time.time() - start_time
-                if elapsed >= target_duration:
-                    system_logger.info(
-                        f"Minimum duration of {target_duration}s reached. Exiting."
-                    )
-                    break
-                await asyncio.sleep(1)
+        p_input = ProcessedInput(**body)
+    except Exception as e:
+        raise errors.BadRequest(str(e))
+        
+    db = Database()
+    db.upsert_processed_input(p_input)
+    
+    queue = QueueService()
+    queue.push(p_input.id)
+    
+    return body
 
-            # Cancel tasks
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+@registry.handles(
+    rule='/processed-inputs/<input_id>',
+    method='GET',
+    response_body_schema=ProcessedInputSchema(),
+)
+def get_processed_input(input_id):
+    db = Database() 
+    p_input = db.get_processed_input(input_id)
+    if not p_input:
+        raise errors.NotFound()
+        
+    return p_input.model_dump()
 
-            # Cleanup server
-            await server_runner.cleanup()
+@registry.handles(
+    rule='/playback-contents',
+    method='POST',
+    request_body_schema=PlaybackContentSchema(),
+    response_body_schema=PlaybackContentSchema(),
+)
+def create_playback_content():
+    body = rebar.validated_body
+    
+    try:
+        playback = PlaybackContent(**body)
+    except Exception as e:
+        raise errors.BadRequest(str(e))
+        
+    db = Database()
+    db.upsert_topic_playback(playback.processed_input_id, playback)
+    
+    return body
 
-        else:
-            # Run forever
-            await asyncio.gather(*tasks)
-
-    except asyncio.CancelledError:
-        system_logger.info("Tasks cancelled.")
-
+@registry.handles(
+    rule='/topics',
+    method='GET',
+    response_body_schema=TopicListSchema(),
+)
+def get_topics():
+    db = Database()
+    topics = db.get_all_topics()
+    
+    # Convert Pydantic models to list of dicts for Marshmallow
+    return {'topics': [t.model_dump() for t in topics]}
 
 def main():
-    parser = argparse.ArgumentParser(description="Covered Backend CLI")
-    parser.add_argument(
-        "--duration",
-        type=int,
-        default=None,
-        help="Minimum duration to run in seconds. If not specified, runs forever.",
-    )
-
-    args = parser.parse_args()
-
-    try:
-        asyncio.run(run_loop(args.duration))
-    except KeyboardInterrupt:
-        system_logger.info("\nStopped by user.")
-
+    logger.info("Starting Main Service (API)...")
+    app = create_app()
+    app.run(host=SERVER_HOST, port=SERVER_PORT, debug=True, use_reloader=False)
 
 if __name__ == "__main__":
     main()
